@@ -449,6 +449,7 @@ document.getElementById('btnImportTTI')!.onclick = () => (document.getElementByI
 (document.getElementById('fileTTI') as HTMLInputElement).onchange = function() {
   const file = (this as HTMLInputElement).files?.[0];
   if (!file) return;
+  (this as HTMLInputElement).value = '';
   file.text().then(text => {
     const svc = importTti(text);
     if (svc.pages.length > 0) {
@@ -469,6 +470,7 @@ document.getElementById('btnImportT42')!.onclick = () => (document.getElementByI
 (document.getElementById('fileT42') as HTMLInputElement).onchange = function() {
   const file = (this as HTMLInputElement).files?.[0];
   if (!file) return;
+  (this as HTMLInputElement).value = '';
   file.arrayBuffer().then(buf => {
     const result = importT42(new Uint8Array(buf));
     if (result.pages.length > 0) {
@@ -494,6 +496,7 @@ document.getElementById('btnImportBitmap')!.onclick = () => (document.getElement
 (document.getElementById('fileBitmap') as HTMLInputElement).onchange = function() {
   const file = (this as HTMLInputElement).files?.[0];
   if (!file) return;
+  (this as HTMLInputElement).value = ''; // reset so same file can be re-selected
   bmpImage = new Image();
   bmpImage.onload = () => {
     // Show source preview
