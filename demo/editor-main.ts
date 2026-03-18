@@ -484,8 +484,8 @@ document.getElementById('btnDoubleHeight')!.onclick = () => {
 // ─── Pages / Subpages ───────────────────────────────────────────
 
 // Multi-page support: store pages as an array of grids
-let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; subMetas: RowMeta[][]; activeSubpage: number }[] = [
-  { grid, id: 0x100, subgrids: [grid], subMetas: [rowMeta], activeSubpage: 0 },
+let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; subMetas: RowMeta[][]; activeSubpage: number; fastext: [string,string,string,string] }[] = [
+  { grid, id: 0x100, subgrids: [grid], subMetas: [rowMeta], activeSubpage: 0, fastext: ['','','',''] },
 ];
 let activePageIdx = 0;
 
@@ -556,6 +556,7 @@ function switchToPage(idx: number) {
   p.grid = grid;
   updatePageList();
   updateSubLabel();
+  loadFastext();
   showFeedback(`Switched to P${p.id.toString(16).toUpperCase()}`);
 }
 
@@ -725,8 +726,25 @@ document.getElementById('btnHelp')!.onclick = () => {
   );
 };
 
+// ─── Fastext links ──────────────────────────────────────────────
+
+const ftInputs = ['ftRed', 'ftGreen', 'ftYellow', 'ftCyan'].map(id => document.getElementById(id) as HTMLInputElement);
+
+function loadFastext() {
+  const ft = pages[activePageIdx].fastext;
+  ftInputs.forEach((inp, i) => inp.value = ft[i]);
+}
+
+function saveFastext() {
+  const ft = pages[activePageIdx].fastext;
+  ftInputs.forEach((inp, i) => ft[i] = inp.value.trim());
+}
+
+ftInputs.forEach(inp => inp.addEventListener('change', saveFastext));
+
 updatePageList();
 updateSubLabel();
+loadFastext();
 
 // ─── Export ─────────────────────────────────────────────────────
 
