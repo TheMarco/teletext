@@ -11,6 +11,9 @@ import { renderToBuffer, BUFFER_WIDTH, BUFFER_HEIGHT } from '../src/render-buffe
 import { createTimingState, advanceTiming } from '../src/timing-engine/timing-engine.js';
 import { compileRow } from '../src/compile/index.js';
 import { createCRTOverlay } from '../src/crt/shaderOverlay.js';
+import { importTti, exportPageToTti, importT42 } from '../src/tti/index.js';
+import { createEmptyPage } from '../src/model/factories.js';
+import { rgbaToGrayscale, applyThreshold, pixelsToSextants, fitToRegion, buildFullColorRowTokens } from '../src/import/index.js';
 import type { TeletextRow } from '../src/model/types.js';
 
 // ─── State ──────────────────────────────────────────────────────
@@ -114,8 +117,12 @@ for (let ch = 0x20; ch <= 0x7E; ch++) {
 // ─── Mosaic block picker ────────────────────────────────────────
 
 const mosaicGrid = document.getElementById('mosaicGrid')!;
-const MOSAIC_EXAMPLES = [0x20, 0x21, 0x22, 0x23, 0x24, 0x28, 0x30, 0x3F, 0x60, 0x61, 0x62, 0x64, 0x68, 0x70, 0x7E, 0x7F];
-MOSAIC_EXAMPLES.forEach(code => {
+// All 64 possible mosaic patterns (6-bit: 2×3 sextant grid)
+const ALL_MOSAICS: number[] = [];
+for (let bits = 0; bits < 64; bits++) {
+  ALL_MOSAICS.push(bits <= 0x1F ? 0x20 + bits : 0x60 + (bits & 0x1F));
+}
+ALL_MOSAICS.forEach(code => {
   const div = document.createElement('div');
   div.className = 'mosaic-cell';
   div.title = `Mosaic 0x${code.toString(16)}`;
@@ -417,11 +424,98 @@ document.getElementById('btnCRT')!.onclick = (e) => {
   else { crtOverlay = createCRTOverlay(canvas); (e.target as HTMLElement).classList.add('active'); }
 };
 
+// ─── Export ─────────────────────────────────────────────────────
+
 document.getElementById('btnExport')!.onclick = () => {
-  // Compile all rows and export as TTI
-  const { exportPageToTti } = require('../src/tti/ttiExporter.js');
-  // ... TODO: proper export
-  showFeedback('Export not yet wired');
+  const page = createEmptyPage(0x100);
+  for (let r = 0; r < 24; r++) {
+    const result = compileVisualRow(grid[r]);
+    page.subpages[0].rows[r] = { index: r, tokens: result.tokens };
+  }
+  const tti = exportPageToTti(page);
+  const blob = new Blob([tti], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'page.tti'; a.click();
+  URL.revokeObjectURL(url);
+  showFeedback('Exported as TTI');
+};
+
+// ─── Import TTI ─────────────────────────────────────────────────
+
+document.getElementById('btnImportTTI')!.onclick = () => (document.getElementById('fileTTI') as HTMLInputElement).click();
+(document.getElementById('fileTTI') as HTMLInputElement).onchange = function() {
+  const file = (this as HTMLInputElement).files?.[0];
+  if (!file) return;
+  file.text().then(text => {
+    const svc = importTti(text);
+    if (svc.pages.length > 0) {
+      const sp = svc.pages[0].subpages[0];
+      pushUndo();
+      for (let r = 0; r < 24; r++) {
+        const compiled = compileRow(sp.rows[r]);
+        grid[r] = decompileToVisualRow(Array.from(compiled.bytes40));
+      }
+      showFeedback(`Imported ${svc.pages.length} page(s)`);
+    }
+  });
+};
+
+// ─── Import T42 ─────────────────────────────────────────────────
+
+document.getElementById('btnImportT42')!.onclick = () => (document.getElementById('fileT42') as HTMLInputElement).click();
+(document.getElementById('fileT42') as HTMLInputElement).onchange = function() {
+  const file = (this as HTMLInputElement).files?.[0];
+  if (!file) return;
+  file.arrayBuffer().then(buf => {
+    const result = importT42(new Uint8Array(buf));
+    if (result.pages.length > 0) {
+      const sp = result.pages[0].subpages[0];
+      pushUndo();
+      for (let r = 0; r < 24; r++) {
+        const compiled = compileRow(sp.rows[r]);
+        grid[r] = decompileToVisualRow(Array.from(compiled.bytes40));
+      }
+      showFeedback(`Imported ${result.pages.length} page(s) from T42`);
+    }
+  });
+};
+
+// ─── Import Bitmap ──────────────────────────────────────────────
+
+document.getElementById('btnImportBitmap')!.onclick = () => (document.getElementById('fileBitmap') as HTMLInputElement).click();
+(document.getElementById('fileBitmap') as HTMLInputElement).onchange = function() {
+  const file = (this as HTMLInputElement).files?.[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    pushUndo();
+    // Draw to temp canvas and get RGBA
+    const tmpCanvas = new OffscreenCanvas(img.width, img.height);
+    const tmpCtx = tmpCanvas.getContext('2d')!;
+    tmpCtx.drawImage(img, 0, 0);
+
+    // Fit to teletext grid: 39 cols × 22 rows (leave row 0-1 for header)
+    const maxCols = 39, maxRows = 22;
+    const dstW = maxCols * 2, dstH = maxRows * 3;
+    const fitCanvas = new OffscreenCanvas(dstW, dstH);
+    const fitCtx = fitCanvas.getContext('2d')!;
+    fitCtx.drawImage(tmpCanvas, 0, 0, dstW, dstH);
+    const fittedRGBA = new Uint8Array(fitCtx.getImageData(0, 0, dstW, dstH).data);
+
+    // Full-color import into visual grid starting at row 2
+    const cellRows = Math.floor(dstH / 3);
+    const cellCols = Math.floor(dstW / 2);
+
+    for (let cr = 0; cr < cellRows && (2 + cr) < 24; cr++) {
+      const rowTokens = buildFullColorRowTokens(fittedRGBA, dstW, dstH, cr, cellCols, 0, 0, true);
+      // Compile tokens to bytes and decompile to visual row
+      const compiled = compileRow({ index: 2 + cr, tokens: rowTokens });
+      grid[2 + cr] = decompileToVisualRow(Array.from(compiled.bytes40));
+    }
+
+    showFeedback(`Imported image (${img.width}×${img.height}) as ${cellCols}×${cellRows} mosaic`);
+  };
+  img.src = URL.createObjectURL(file);
 };
 
 // ─── Render ─────────────────────────────────────────────────────
