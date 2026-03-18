@@ -141,7 +141,14 @@ ALL_MOSAICS.forEach(code => {
     }
   }
   div.appendChild(c);
-  div.onclick = () => { activeMosaic = code; showFeedback('Mosaic block selected'); };
+  div.onclick = () => {
+    activeMosaic = code;
+    document.querySelectorAll('.mosaic-cell').forEach(el => el.classList.remove('active'));
+    div.classList.add('active');
+    showFeedback('Mosaic block selected');
+  };
+  // Default: select the full block (0x3F)
+  if (code === 0x3F) div.classList.add('active');
   mosaicGrid.appendChild(div);
 });
 
@@ -180,20 +187,16 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'paint':
-      // Paint mosaic: set the sextant bit
+      // Paint mosaic: stamp the selected mosaic block
       if (isRightClick) {
-        // Erase sextant bit
-        let bits = mosaicBits(cell);
-        bits &= ~(1 << (sy * 2 + sx));
-        cell.char = bitsToMosaic(bits);
+        // Erase: clear to empty mosaic
+        cell.char = 0x20;
         cell.mosaic = true;
         cell.fg = activeFg;
         cell.bg = activeBg;
       } else {
-        // Set sextant bit
-        let bits = mosaicBits(cell);
-        bits |= (1 << (sy * 2 + sx));
-        cell.char = bitsToMosaic(bits);
+        // Stamp the active mosaic character
+        cell.char = activeMosaic;
         cell.mosaic = true;
         cell.fg = activeFg;
         cell.bg = activeBg;

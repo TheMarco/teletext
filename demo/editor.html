@@ -51,6 +51,7 @@
     .mosaic-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
     .mosaic-cell { aspect-ratio: 0.67; background: #222; border: 1px solid #333; border-radius: 2px; cursor: pointer; position: relative; }
     .mosaic-cell:hover { border-color: #0aa; }
+    .mosaic-cell.active { border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.4); }
     .mosaic-cell canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
     /* Canvas area */
