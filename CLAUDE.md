@@ -45,23 +45,21 @@ This phase builds the authoring, page-compilation, and editing system on top of 
 
 ## Implementation order
 
-Follow `01_IMPLEMENTATION_ORDER.md` exactly. Do not skip phases.
-Do not start editor UI work before AST, TTI, and compiler are stable.
-Do not start bitmap import before page mutation APIs exist.
+Follow `design-docs/01_IMPLEMENTATION_ORDER.md` exactly. Do not skip phases.
 
-## Spec documents (read as needed)
+## Spec documents (in design-docs/)
 
-- `00_READ_FIRST.md` — project overview
-- `01_IMPLEMENTATION_ORDER.md` — phase sequence and gates
-- `02_PAGE_MODEL_AND_SERVICE_BUNDLE.md` — canonical types and APIs
-- `03_TTI_INTEROP.md` — TTI parser/exporter architecture
-- `04_PACKET_COMPILER.md` — AST → packet compilation
-- `05_EDITOR_PRD.md` — editor product requirements
-- `06_AUTHORING_UX.md` — editor UX design
-- `07_BITMAP_IMPORT_PIPELINE.md` — image import pipeline
-- `08_MOSAIC_AND_QUANTIZATION.md` — mosaic encoding logic
-- `09_TEST_PLAN.md` — full test plan
-- `10_AGENT_TASKS.md` — ordered task list
+- `design-docs/00_READ_FIRST.md` — project overview
+- `design-docs/01_IMPLEMENTATION_ORDER.md` — phase sequence and gates
+- `design-docs/02_PAGE_MODEL_AND_SERVICE_BUNDLE.md` — canonical types and APIs
+- `design-docs/03_TTI_INTEROP.md` — TTI parser/exporter architecture
+- `design-docs/04_PACKET_COMPILER.md` — AST → packet compilation
+- `design-docs/05_EDITOR_PRD.md` — editor product requirements
+- `design-docs/06_AUTHORING_UX.md` — editor UX design
+- `design-docs/07_BITMAP_IMPORT_PIPELINE.md` — image import pipeline
+- `design-docs/08_MOSAIC_AND_QUANTIZATION.md` — mosaic encoding logic
+- `design-docs/09_TEST_PLAN.md` — full test plan
+- `design-docs/10_AGENT_TASKS.md` — ordered task list
 
 ## Engineering style
 
