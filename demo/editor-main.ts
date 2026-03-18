@@ -460,6 +460,93 @@ document.getElementById('btnCRT')!.onclick = (e) => {
   else { crtOverlay = createCRTOverlay(canvas); (e.target as HTMLElement).classList.add('active'); }
 };
 
+// ─── Pages / Subpages ───────────────────────────────────────────
+
+// Multi-page support: store pages as an array of grids
+let pages: { grid: VisualRow[]; id: number }[] = [{ grid, id: 0x100 }];
+let activePageIdx = 0;
+
+function updatePageList() {
+  const list = document.getElementById('pageList')!;
+  list.innerHTML = '';
+  pages.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.textContent = 'P' + p.id.toString(16).toUpperCase().padStart(3, '0');
+    if (i === activePageIdx) li.classList.add('active');
+    li.onclick = () => { switchToPage(i); };
+    list.appendChild(li);
+  });
+  (document.getElementById('pageLabel') as HTMLElement).textContent = 'P' + pages[activePageIdx].id.toString(16).toUpperCase().padStart(3, '0');
+}
+
+function switchToPage(idx: number) {
+  pages[activePageIdx].grid = grid;
+  activePageIdx = idx;
+  grid = pages[idx].grid;
+  updatePageList();
+  showFeedback(`Switched to P${pages[idx].id.toString(16).toUpperCase()}`);
+}
+
+document.getElementById('btnAddPage')!.onclick = () => {
+  const maxId = Math.max(...pages.map(p => p.id));
+  const newId = maxId + 1;
+  pages[activePageIdx].grid = grid;
+  const newGrid = createVisualGrid();
+  pages.push({ grid: newGrid, id: newId });
+  activePageIdx = pages.length - 1;
+  grid = newGrid;
+  updatePageList();
+  showFeedback(`Added P${newId.toString(16).toUpperCase()}`);
+};
+
+document.getElementById('btnDelPage')!.onclick = () => {
+  if (pages.length <= 1) { showFeedback('Cannot delete last page'); return; }
+  pushUndo();
+  pages.splice(activePageIdx, 1);
+  activePageIdx = Math.min(activePageIdx, pages.length - 1);
+  grid = pages[activePageIdx].grid;
+  updatePageList();
+  showFeedback('Page deleted');
+};
+
+// Subpages (simple prev/next stub for now)
+document.getElementById('btnPrevSub')?.addEventListener('click', () => showFeedback('Subpage: 1/1'));
+document.getElementById('btnNextSub')?.addEventListener('click', () => showFeedback('Subpage: 1/1'));
+document.getElementById('btnAddSub')?.addEventListener('click', () => showFeedback('Subpages not yet supported'));
+
+// ─── Help ───────────────────────────────────────────────────────
+
+document.getElementById('btnHelp')!.onclick = () => {
+  alert(
+    'Teletext Studio — Quick Help\n\n' +
+    'TOOLS:\n' +
+    '• Text: Click to place cursor, then type\n' +
+    '• Paint Blocks: Click sub-blocks (2×3 per cell)\n' +
+    '  Left-click = fill, Right-click = erase\n' +
+    '• Fill Color: Click cell to recolor it\n' +
+    '• Eraser: Click cell to clear it\n' +
+    '• Pick Color: Click cell to grab its colors\n' +
+    '• Select/Move: Drag to select, click inside to move\n\n' +
+    'COLORS:\n' +
+    '• Click palette swatches for FG/BG\n' +
+    '• Keys 1-8: select FG color (non-text tools)\n' +
+    '• Shift+1-8: select BG color (non-text tools)\n\n' +
+    'SHORTCUTS:\n' +
+    '• Ctrl+Z / Ctrl+Shift+Z: Undo / Redo\n' +
+    '• Arrow keys: Move cursor\n' +
+    '• Delete: Clear selection or cell\n' +
+    '• Escape: Clear selection\n' +
+    '• Tab: 4-space tab stop (text mode)\n\n' +
+    'IMPORT/EXPORT:\n' +
+    '• Import Image: Convert bitmap to mosaic art\n' +
+    '• Import TTI/T42: Load teletext files\n' +
+    '• Export: Download as .tti file\n' +
+    '• CRT: Toggle CRT shader overlay'
+  );
+};
+
+updatePageList();
+
 // ─── Export ─────────────────────────────────────────────────────
 
 document.getElementById('btnExport')!.onclick = () => {
