@@ -154,6 +154,26 @@
   <input type="file" id="fileT42" accept=".t42">
   <input type="file" id="fileBitmap" accept="image/*">
 
+  <!-- Bitmap Import Dialog -->
+  <div id="bmpDialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:20px;width:560px;max-height:80vh;overflow-y:auto">
+      <h2 style="color:#0ff;font-size:15px;margin-bottom:16px">Import Image</h2>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Start row:</label><input type="number" id="bmpRow" value="2" min="0" max="23" style="flex:1"></div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Start col:</label><input type="number" id="bmpCol" value="0" min="0" max="39" style="flex:1"></div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Max cols:</label><input type="number" id="bmpCols" value="39" min="1" max="40" style="flex:1"></div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Max rows:</label><input type="number" id="bmpRows" value="22" min="1" max="24" style="flex:1"></div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">BG color:</label><select id="bmpBg" style="flex:1"><option value="0" selected>Black</option><option value="1">Red</option><option value="2">Green</option><option value="3">Yellow</option><option value="4">Blue</option><option value="5">Magenta</option><option value="6">Cyan</option><option value="7">White</option></select></div>
+      <div style="display:flex;gap:16px;margin:16px 0">
+        <div><div style="color:#888;font-size:11px;margin-bottom:4px">Source</div><canvas id="bmpSrc" style="border:1px solid #444;image-rendering:pixelated;max-width:240px;max-height:180px"></canvas></div>
+        <div><div style="color:#888;font-size:11px;margin-bottom:4px">Preview</div><canvas id="bmpPreview" style="border:1px solid #444;image-rendering:pixelated;max-width:240px;max-height:180px"></canvas></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="bmpCancel" style="padding:8px 20px">Cancel</button>
+        <button id="bmpApply" style="padding:8px 20px;background:#0088aa;color:#fff;border-color:#0aa">Apply</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./editor-main.ts"></script>
 </body>
 </html>

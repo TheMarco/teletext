@@ -485,39 +485,74 @@ document.getElementById('btnImportT42')!.onclick = () => (document.getElementByI
 
 // ─── Import Bitmap ──────────────────────────────────────────────
 
+const bmpDialog = document.getElementById('bmpDialog')!;
+const bmpSrcCanvas = document.getElementById('bmpSrc') as HTMLCanvasElement;
+const bmpPreviewCanvas = document.getElementById('bmpPreview') as HTMLCanvasElement;
+let bmpImage: HTMLImageElement | null = null;
+
 document.getElementById('btnImportBitmap')!.onclick = () => (document.getElementById('fileBitmap') as HTMLInputElement).click();
 (document.getElementById('fileBitmap') as HTMLInputElement).onchange = function() {
   const file = (this as HTMLInputElement).files?.[0];
   if (!file) return;
-  const img = new Image();
-  img.onload = () => {
-    pushUndo();
-    // Draw to temp canvas and get RGBA
-    const tmpCanvas = new OffscreenCanvas(img.width, img.height);
-    const tmpCtx = tmpCanvas.getContext('2d')!;
-    tmpCtx.drawImage(img, 0, 0);
-
-    // Fit to teletext grid: 39 cols × 22 rows (leave row 0-1 for header)
-    const maxCols = 39, maxRows = 22;
-    const dstW = maxCols * 2, dstH = maxRows * 3;
-    const fitCanvas = new OffscreenCanvas(dstW, dstH);
-    const fitCtx = fitCanvas.getContext('2d')!;
-    fitCtx.drawImage(tmpCanvas, 0, 0, dstW, dstH);
-    const fittedRGBA = new Uint8Array(fitCtx.getImageData(0, 0, dstW, dstH).data);
-
-    // Full-color import into visual grid starting at row 2
-    const cellRows = Math.floor(dstH / 3);
-    const cellCols = Math.floor(dstW / 2);
-
-    for (let cr = 0; cr < cellRows && (2 + cr) < 24; cr++) {
-      const rowTokens = buildFullColorRowTokens(fittedRGBA, dstW, dstH, cr, cellCols, 0, 0, true);
-      // Compile tokens to bytes and decompile to visual row
-      const compiled = compileRow({ index: 2 + cr, tokens: rowTokens });
-      grid[2 + cr] = decompileToVisualRow(Array.from(compiled.bytes40));
-    }
-
-    showFeedback(`Imported image (${img.width}×${img.height}) as ${cellCols}×${cellRows} mosaic`);
+  bmpImage = new Image();
+  bmpImage.onload = () => {
+    // Show source preview
+    bmpSrcCanvas.width = bmpImage!.width;
+    bmpSrcCanvas.height = bmpImage!.height;
+    bmpSrcCanvas.getContext('2d')!.drawImage(bmpImage!, 0, 0);
+    updateBmpPreview();
+    bmpDialog.style.display = 'flex';
   };
+  bmpImage.src = URL.createObjectURL(file);
+};
+
+function updateBmpPreview() {
+  if (!bmpImage) return;
+  const maxCols = parseInt((document.getElementById('bmpCols') as HTMLInputElement).value) || 39;
+  const maxRows = parseInt((document.getElementById('bmpRows') as HTMLInputElement).value) || 22;
+  const dstW = maxCols * 2, dstH = maxRows * 3;
+  bmpPreviewCanvas.width = dstW;
+  bmpPreviewCanvas.height = dstH;
+  const pctx = bmpPreviewCanvas.getContext('2d')!;
+  pctx.drawImage(bmpImage, 0, 0, dstW, dstH);
+}
+
+['bmpCols', 'bmpRows', 'bmpRow', 'bmpCol', 'bmpBg'].forEach(id => {
+  document.getElementById(id)!.addEventListener('change', updateBmpPreview);
+  document.getElementById(id)!.addEventListener('input', updateBmpPreview);
+});
+
+document.getElementById('bmpCancel')!.onclick = () => { bmpDialog.style.display = 'none'; bmpImage = null; };
+
+document.getElementById('bmpApply')!.onclick = () => {
+  if (!bmpImage) return;
+  const startRow = parseInt((document.getElementById('bmpRow') as HTMLInputElement).value) || 2;
+  const startCol = parseInt((document.getElementById('bmpCol') as HTMLInputElement).value) || 0;
+  const maxCols = parseInt((document.getElementById('bmpCols') as HTMLInputElement).value) || 39;
+  const maxRows = parseInt((document.getElementById('bmpRows') as HTMLInputElement).value) || 22;
+  const bgColor = parseInt((document.getElementById('bmpBg') as HTMLSelectElement).value) || 0;
+
+  pushUndo();
+  const dstW = maxCols * 2, dstH = maxRows * 3;
+  const tmpCanvas = new OffscreenCanvas(bmpImage.width, bmpImage.height);
+  tmpCanvas.getContext('2d')!.drawImage(bmpImage, 0, 0);
+  const fitCanvas = new OffscreenCanvas(dstW, dstH);
+  fitCanvas.getContext('2d')!.drawImage(tmpCanvas, 0, 0, dstW, dstH);
+  const fittedRGBA = new Uint8Array(fitCanvas.getContext('2d')!.getImageData(0, 0, dstW, dstH).data);
+
+  const cellRows = Math.floor(dstH / 3);
+  const cellCols = Math.floor(dstW / 2);
+
+  for (let cr = 0; cr < cellRows && (startRow + cr) < 24; cr++) {
+    const rowTokens = buildFullColorRowTokens(fittedRGBA, dstW, dstH, cr, cellCols, startCol, bgColor as any, true);
+    const compiled = compileRow({ index: startRow + cr, tokens: rowTokens });
+    grid[startRow + cr] = decompileToVisualRow(Array.from(compiled.bytes40));
+  }
+
+  bmpDialog.style.display = 'none';
+  bmpImage = null;
+  showFeedback(`Imported as ${cellCols}×${cellRows} mosaic`);
+};
   img.src = URL.createObjectURL(file);
 };
 
