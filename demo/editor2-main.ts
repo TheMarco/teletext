@@ -17,7 +17,14 @@ import type { TeletextRow } from '../src/model/types.js';
 
 let grid = createVisualGrid();
 let cursorRow = 0, cursorCol = 0;
-let activeTool: 'text' | 'paint' | 'fill' | 'erase' | 'picker' = 'text';
+let activeTool: 'text' | 'paint' | 'fill' | 'erase' | 'picker' | 'select' = 'text';
+
+// Selection state
+let selection: { r1: number; c1: number; r2: number; c2: number } | null = null;
+let selDragStart: { row: number; col: number } | null = null;
+let selMoving = false;
+let selMoveOrigin: { row: number; col: number } | null = null;
+let selClipboard: VisualCell[][] | null = null;
 let activeFg = 7; // white
 let activeBg = 0; // black
 let activeChar = 0x20;
@@ -205,6 +212,10 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       bgLabel.textContent = COLOR_NAMES[activeBg];
       showFeedback(`Picked ${COLOR_NAMES[cell.fg]} on ${COLOR_NAMES[cell.bg]}`);
       break;
+
+    case 'select':
+      // Handled in mousedown/mousemove/mouseup below
+      break;
   }
 
   cursorRow = row; cursorCol = col;
@@ -225,19 +236,97 @@ function bitsToMosaic(bits: number): number {
 }
 
 canvas.addEventListener('mousedown', (e) => {
+  const { row, col, sx, sy } = canvasToCell(e);
+
+  if (activeTool === 'select') {
+    // Check if clicking inside existing selection → start move
+    if (selection && row >= selection.r1 && row <= selection.r2 && col >= selection.c1 && col <= selection.c2) {
+      selMoving = true;
+      selMoveOrigin = { row, col };
+      // Copy selection content
+      selClipboard = [];
+      for (let r = selection.r1; r <= selection.r2; r++) {
+        const rowCells: VisualCell[] = [];
+        for (let c = selection.c1; c <= selection.c2; c++) {
+          rowCells.push({ ...grid[r][c] });
+        }
+        selClipboard.push(rowCells);
+      }
+      pushUndo();
+    } else {
+      // Start new selection
+      selDragStart = { row, col };
+      selection = { r1: row, c1: col, r2: row, c2: col };
+      selMoving = false;
+    }
+    isDragging = true;
+    return;
+  }
+
   if (activeTool !== 'text') pushUndo();
   isDragging = true;
-  const { row, col, sx, sy } = canvasToCell(e);
   applyTool(row, col, sx, sy, e.button === 2);
 });
 
 canvas.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   const { row, col, sx, sy } = canvasToCell(e);
+
+  if (activeTool === 'select') {
+    if (selMoving && selMoveOrigin && selection && selClipboard) {
+      // Move the selection
+      const dr = row - selMoveOrigin.row;
+      const dc = col - selMoveOrigin.col;
+      if (dr === 0 && dc === 0) return;
+
+      // Clear old position
+      for (let r = selection.r1; r <= selection.r2; r++) {
+        for (let c = selection.c1; c <= selection.c2; c++) {
+          if (r >= 0 && r < 24 && c >= 0 && c < 40) grid[r][c] = defaultVisualCell();
+        }
+      }
+
+      // Move selection bounds
+      const h = selection.r2 - selection.r1;
+      const w = selection.c2 - selection.c1;
+      selection.r1 = Math.max(0, Math.min(23 - h, selection.r1 + dr));
+      selection.c1 = Math.max(0, Math.min(39 - w, selection.c1 + dc));
+      selection.r2 = selection.r1 + h;
+      selection.c2 = selection.c1 + w;
+
+      // Place at new position
+      for (let r = 0; r < selClipboard.length; r++) {
+        for (let c = 0; c < selClipboard[r].length; c++) {
+          const tr = selection.r1 + r;
+          const tc = selection.c1 + c;
+          if (tr >= 0 && tr < 24 && tc >= 0 && tc < 40) {
+            grid[tr][tc] = { ...selClipboard[r][c] };
+          }
+        }
+      }
+
+      selMoveOrigin = { row, col };
+    } else if (selDragStart) {
+      // Extend selection rectangle
+      selection = {
+        r1: Math.min(selDragStart.row, row),
+        c1: Math.min(selDragStart.col, col),
+        r2: Math.max(selDragStart.row, row),
+        c2: Math.max(selDragStart.col, col),
+      };
+    }
+    return;
+  }
+
   applyTool(row, col, sx, sy, e.buttons === 2);
 });
 
-window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  selDragStart = null;
+  selMoving = false;
+  selMoveOrigin = null;
+});
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   pushUndo();
@@ -252,6 +341,22 @@ document.addEventListener('keydown', (e) => {
   // Undo/redo
   if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); return; }
   if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); doUndo(); return; }
+
+  // Delete selection
+  if (e.key === 'Delete' && selection && activeTool === 'select') {
+    pushUndo();
+    for (let r = selection.r1; r <= selection.r2; r++) {
+      for (let c = selection.c1; c <= selection.c2; c++) {
+        if (r >= 0 && r < 24 && c >= 0 && c < 40) grid[r][c] = defaultVisualCell();
+      }
+    }
+    showFeedback('Selection deleted');
+    selection = null;
+    return;
+  }
+
+  // Escape clears selection
+  if (e.key === 'Escape') { selection = null; return; }
 
   // Navigation
   if (e.key === 'ArrowRight') { cursorCol = Math.min(39, cursorCol + 1); cursorLabel.textContent = `${cursorRow}, ${cursorCol}`; return; }
@@ -344,10 +449,30 @@ function compileAndRender() {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
 
-  // Cursor
   const cellW = canvas.width / 40;
   const cellH = canvas.height / 24;
-  ctx.strokeStyle = activeTool === 'paint' ? '#0f0' : '#ff0';
+
+  // Selection rectangle
+  if (selection) {
+    ctx.strokeStyle = '#0ff';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(
+      selection.c1 * cellW, selection.r1 * cellH,
+      (selection.c2 - selection.c1 + 1) * cellW,
+      (selection.r2 - selection.r1 + 1) * cellH,
+    );
+    ctx.setLineDash([]);
+    // Dim area outside selection
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, 0, canvas.width, selection.r1 * cellH); // top
+    ctx.fillRect(0, (selection.r2 + 1) * cellH, canvas.width, canvas.height); // bottom
+    ctx.fillRect(0, selection.r1 * cellH, selection.c1 * cellW, (selection.r2 - selection.r1 + 1) * cellH); // left
+    ctx.fillRect((selection.c2 + 1) * cellW, selection.r1 * cellH, canvas.width, (selection.r2 - selection.r1 + 1) * cellH); // right
+  }
+
+  // Cursor
+  ctx.strokeStyle = activeTool === 'paint' ? '#0f0' : activeTool === 'select' ? '#0ff' : '#ff0';
   ctx.lineWidth = 2;
   ctx.strokeRect(cursorCol * cellW, cursorRow * cellH, cellW, cellH);
 }

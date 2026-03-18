@@ -41,7 +41,14 @@ interface CellColorInfo {
 
 /**
  * Analyze a single 2×3 cell from RGBA pixel data.
- * Returns the best fg color and sextant bits.
+ *
+ * OPTIMAL SOLVER: tries every possible fg color (all 7 non-bg colors)
+ * and for each, computes the best sextant bits and the total visual error.
+ * Picks the fg color + bit pattern that produces the LEAST error.
+ *
+ * This is much better than the naive "dominant color" approach because
+ * it considers how well each color actually represents the 6 sub-pixels
+ * when rendered as a binary on/off pattern.
  */
 function analyzeCell(
   rgba: Uint8Array | Uint8ClampedArray,
@@ -51,53 +58,58 @@ function analyzeCell(
   bgColor: TeletextColor,
 ): CellColorInfo {
   const bgRGB = PALETTE_RGB[bgColor];
-  const subcellColors: TeletextColor[] = [];
-  const subcellRGB: [number, number, number][] = [];
 
-  // Sample each of the 6 subcells
+  // Sample the 6 subcell pixel colors
+  const subcellRGB: [number, number, number][] = [];
   for (let sy = 0; sy < 3; sy++) {
     for (let sx = 0; sx < 2; sx++) {
       const px = cellX * 2 + sx;
       const py = cellY * 3 + sy;
       const i = (py * imgWidth + px) * 4;
-      const r = rgba[i] ?? 0, g = rgba[i + 1] ?? 0, b = rgba[i + 2] ?? 0;
-      subcellColors.push(nearestPaletteColor(r, g, b));
-      subcellRGB.push([r, g, b]);
+      subcellRGB.push([rgba[i] ?? 0, rgba[i + 1] ?? 0, rgba[i + 2] ?? 0]);
     }
   }
 
-  // Find the most common non-bg color in this cell
-  const colorCounts = new Array(8).fill(0);
-  for (const c of subcellColors) {
-    if (c !== bgColor) colorCounts[c]++;
-  }
+  // Try every possible fg color and find the one with least total error
+  let bestFg: TeletextColor = 7;
+  let bestBits: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
+  let bestError = Infinity;
+  let bestFgPixels = 0;
 
-  let fgColor: TeletextColor = 7; // default white
-  let maxCount = 0;
-  for (let c = 0; c < 8; c++) {
-    if (c === bgColor) continue;
-    if (colorCounts[c] > maxCount) {
-      maxCount = colorCounts[c];
-      fgColor = c as TeletextColor;
+  for (let candidateFg = 0; candidateFg < 8; candidateFg++) {
+    if (candidateFg === bgColor) continue; // can't use bg as fg
+
+    const fgRGB = PALETTE_RGB[candidateFg];
+    const bits: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
+    let totalError = 0;
+    let fgCount = 0;
+
+    for (let i = 0; i < 6; i++) {
+      const [r, g, b] = subcellRGB[i];
+      const distToFg = colorDist(r, g, b, fgRGB[0], fgRGB[1], fgRGB[2]);
+      const distToBg = colorDist(r, g, b, bgRGB[0], bgRGB[1], bgRGB[2]);
+
+      if (distToFg < distToBg) {
+        // This sub-pixel is closer to fg — turn it ON
+        bits[i] = 1;
+        totalError += distToFg;
+        fgCount++;
+      } else {
+        // Closer to bg — turn it OFF
+        bits[i] = 0;
+        totalError += distToBg;
+      }
+    }
+
+    if (totalError < bestError) {
+      bestError = totalError;
+      bestFg = candidateFg as TeletextColor;
+      bestBits = bits;
+      bestFgPixels = fgCount;
     }
   }
 
-  // Determine sextant bits: each subcell is fg (1) if it's closer to fg than bg
-  const fgRGB = PALETTE_RGB[fgColor];
-  const bits: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
-  let fgPixels = 0;
-
-  for (let i = 0; i < 6; i++) {
-    const [r, g, b] = subcellRGB[i];
-    const distToFg = colorDist(r, g, b, fgRGB[0], fgRGB[1], fgRGB[2]);
-    const distToBg = colorDist(r, g, b, bgRGB[0], bgRGB[1], bgRGB[2]);
-    if (distToFg < distToBg) {
-      bits[i] = 1;
-      fgPixels++;
-    }
-  }
-
-  return { fgColor, bits, fgPixels };
+  return { fgColor: bestFg, bits: bestBits, fgPixels: bestFgPixels };
 }
 
 // ─── Row color planning ─────────────────────────────────────────
