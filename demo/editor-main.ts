@@ -151,19 +151,26 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'paint':
-      // Paint mosaic: toggle individual sextant sub-block
-      // Each cell has 6 sub-blocks (2×3). Click toggles the one under the cursor.
+      // Paint mosaic: set individual sextant sub-block
       if (isRightClick) {
         // Clear this sub-block
         let bits = mosaicBits(cell);
         bits &= ~(1 << (sy * 2 + sx));
         cell.char = bits === 0 ? 0x20 : bitsToMosaic(bits);
         cell.mosaic = bits > 0;
-        cell.fg = activeFg;
+        cell.fg = bits > 0 ? cell.fg : activeFg;
         cell.bg = activeBg;
       } else {
-        // Set this sub-block
-        let bits = cell.mosaic ? mosaicBits(cell) : 0;
+        // If painting a different color than the cell's current fg,
+        // start fresh — a cell can only have one fg color
+        let bits: number;
+        if (cell.mosaic && cell.fg === activeFg) {
+          // Same color: add to existing bits
+          bits = mosaicBits(cell);
+        } else {
+          // Different color: clear old bits, start new
+          bits = 0;
+        }
         bits |= (1 << (sy * 2 + sx));
         cell.char = bitsToMosaic(bits);
         cell.mosaic = true;
