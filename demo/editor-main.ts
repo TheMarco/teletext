@@ -805,7 +805,7 @@ document.getElementById('btnImportT42')!.onclick = () => (document.getElementByI
         subgrids.push(vRows);
         subMetas.push(meta);
       }
-      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0 };
+      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0, fastext: ['','','',''] as [string,string,string,string] };
     });
     activePageIdx = 0;
     grid = pages[0].subgrids[0];
@@ -903,7 +903,7 @@ function compileAndRender() {
   }
 
   // Inject fastext bar on row 23 if any links are set
-  const ft = pages[activePageIdx].fastext;
+  const ft = pages[activePageIdx].fastext ?? ['','','',''];
   if (ft.some(f => f)) {
     const ftRow = new Array(40).fill(0x20);
     const colors = [0x01, 0x02, 0x03, 0x06]; // red, green, yellow, cyan
