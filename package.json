@@ -7,14 +7,14 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "vite demo --open /index.html",
+    "start": "vite demo --open",
     "editor": "vite demo --open /editor.html",
     "golden:generate": "tsx src/__tests__/golden/generate.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Marco van Hylckama Vlieg",
+  "license": "CC-BY-4.0",
+  "description": "Complete Teletext System B (WST) implementation",
   "devDependencies": {
     "@types/node": "^25.5.0",
     "tsx": "^4.21.0",
