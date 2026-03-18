@@ -13,6 +13,7 @@ export {
 } from './ttiTranslations.js';
 export { importT42, extractTeletextLines, t42ToTti } from './t42Import.js';
 export type { T42ImportResult } from './t42Import.js';
+export { exportServiceToT42, exportPageToT42 } from './t42Export.js';
 
 /**
  * Convenience: parse a TTI string all the way to a TeletextService.

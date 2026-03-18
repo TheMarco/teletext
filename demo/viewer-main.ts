@@ -8,11 +8,12 @@ import { createTimingState, advanceTiming } from '../src/timing-engine/timing-en
 import { createCRTOverlay } from '../src/crt/shaderOverlay.js';
 import { buildAICreatedService } from './ai-created-pages.js';
 import { compileRow } from '../src/compile/index.js';
+import { importT42, exportServiceToT42 } from '../src/tti/index.js';
 import type { TeletextPage, TeletextService } from '../src/model/types.js';
 
 // ─── State ──────────────────────────────────────────────────────
 
-const service = buildAICreatedService();
+let service: TeletextService = buildAICreatedService();
 let currentPageNumber = 0x100;
 let currentSubpage = 0;
 let reveal = false;
@@ -221,6 +222,41 @@ function frame(time: number) {
   render();
   requestAnimationFrame(frame);
 }
+
+// ─── T42 Load / Export ──────────────────────────────────────────
+
+document.getElementById('btnLoadT42')!.onclick = () => {
+  (document.getElementById('fileT42') as HTMLInputElement).click();
+};
+
+(document.getElementById('fileT42') as HTMLInputElement).onchange = function() {
+  const file = (this as HTMLInputElement).files?.[0];
+  if (!file) return;
+  (this as HTMLInputElement).value = '';
+  file.arrayBuffer().then(buf => {
+    const result = importT42(new Uint8Array(buf));
+    if (result.pages.length > 0) {
+      service = {
+        id: 'imported',
+        title: file.name,
+        pages: result.pages,
+        defaultLanguageSubset: 'english',
+      };
+      navigateTo(service.pages[0].pageNumber);
+    }
+  });
+};
+
+document.getElementById('btnExportT42')!.onclick = () => {
+  const t42 = exportServiceToT42(service);
+  const blob = new Blob([t42], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'teletext-service.t42';
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 // ─── Init ───────────────────────────────────────────────────────
 

@@ -213,8 +213,8 @@ function page200(): TeletextPage {
   sp.rows[17] = textRow(17, W, 'Creative & Utility');
   sp.rows[18] = menuItem(18, 'Audio Visualizer', '211');
   sp.rows[19] = menuItem(19, 'Last Weather App', '212');
-  sp.rows[20] = menuItem(20, 'Jumbotron Simulator', '213');
-  sp.rows[21] = menuItem(21, 'Color Clock', '214');
+  sp.rows[20] = menuItem(20, 'Jumbotron/Color Clock', '213');
+  sp.rows[21] = menuItem(21, 'Social Media Downloader', '215');
   sp.rows[22] = sep(22, MR);
   sp.rows[23] = fastext('Index', 'Stories', 'Lab Notes', '');
   return page;
@@ -282,6 +282,9 @@ const products: Array<[number, string, string, string, string, string[], number]
   [0x214, 'Color Clock', 'A 1991 clock design, brought to life with AI coding.', 'Web | Creative', 'Free',
     ['A design concept from 1991 finally realized with modern code.',
      'Time displayed through smooth color transitions. A personal project brought to life after 30+ years.'], M],
+  [0x215, 'SM Downloader', 'Save content from any platform without the friction.', 'Web | Utility', 'Free',
+    ['Save content from any social media platform without the friction of dealing with platform-specific download tools.',
+     'Simple, clean interface. Paste a URL, get your content. No ads, no sign-up walls.'], C],
 ];
 
 function buildProductPages(): TeletextPage[] {

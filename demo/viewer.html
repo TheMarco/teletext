@@ -52,7 +52,12 @@
       </div>
     </div>
     <div class="info">Type a page number or use the keypad. Arrow up/down or PgUp/PgDn for subpages. R to reveal.</div>
+    <div style="margin-top:8px;display:flex;gap:8px;justify-content:center">
+      <button id="btnLoadT42" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px 16px;cursor:pointer;font-family:inherit;font-size:12px">Load T42 File</button>
+      <button id="btnExportT42" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px 16px;cursor:pointer;font-family:inherit;font-size:12px">Export T42</button>
+    </div>
   </div>
+  <input type="file" id="fileT42" accept=".t42" style="display:none">
   <script type="module" src="./viewer-main.ts"></script>
 </body>
 </html>
