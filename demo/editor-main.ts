@@ -196,8 +196,13 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
         if (visited.has(key)) continue;
         if (r < 0 || r >= 24 || c < 0 || c >= 40) continue;
         const t = grid[r][c];
-        // Match cells that look the same: same char, fg, bg, and mosaic flag
-        if (t.char !== targetChar || t.fg !== targetFg || t.bg !== targetBg || t.mosaic !== targetMosaic) continue;
+        // For mosaic cells: match on color only (different sextant patterns are still "same region")
+        // For text cells: match on char + color
+        if (targetMosaic && t.mosaic) {
+          if (t.fg !== targetFg || t.bg !== targetBg) continue;
+        } else {
+          if (t.char !== targetChar || t.fg !== targetFg || t.bg !== targetBg || t.mosaic !== targetMosaic) continue;
+        }
         visited.add(key);
         t.fg = activeFg;
         t.bg = activeBg;
