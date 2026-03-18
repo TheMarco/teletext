@@ -181,7 +181,7 @@ TypeScript, Vite, Vitest, WebGL (GLSL shaders). No runtime dependencies.
 
 ## License
 
-ISC
+CC BY 4.0 — Attribution required. See [LICENSE](LICENSE).
 
 ---
 
