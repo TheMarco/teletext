@@ -2,14 +2,14 @@
 
 A complete Teletext System B (WST) platform: renderer, authoring system, editor, and viewer. Built from scratch in TypeScript based on ETSI EN 300 706.
 
-![Teletext Viewer](https://img.shields.io/badge/pages-36-cyan) ![Tests](https://img.shields.io/badge/tests-389%20passing-green) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Teletext Viewer](https://img.shields.io/badge/pages-36+-cyan) ![Tests](https://img.shields.io/badge/tests-400%20passing-green) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 
 ## What is this?
 
 This is a fully functional Teletext system that can:
 
 - **Render** pixel-perfect Teletext pages through a state machine that implements every Level 1 control code
-- **Import** real broadcast captures from `.t42` (DVB) and `.tti` files
+- **Import** real broadcast captures from `.t42` (DVB) files
 - **Author** new pages with a browser-based editor
 - **Compile** pages into exact Teletext packet structures
 - **Display** pages through a CRT shader that simulates scanlines, phosphor persistence, bloom, and aperture grille
@@ -20,14 +20,11 @@ This is a fully functional Teletext system that can:
 ```bash
 npm install
 
-# Run the viewer (teletext service with CRT shader)
-npm run viewer
+# Run the homepage (viewer + info)
+npm start
 
 # Run the editor
 npm run editor
-
-# Run the basic demo
-npm run demo
 
 # Run tests
 npm test

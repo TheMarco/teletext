@@ -7,9 +7,8 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "vite demo --open /index.html",
+    "start": "vite demo --open /index.html",
     "editor": "vite demo --open /editor.html",
-    "viewer": "vite demo --open /viewer.html",
     "golden:generate": "tsx src/__tests__/golden/generate.ts"
   },
   "keywords": [],

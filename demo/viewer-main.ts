@@ -8,7 +8,7 @@ import { createTimingState, advanceTiming } from '../src/timing-engine/timing-en
 import { createCRTOverlay } from '../src/crt/shaderOverlay.js';
 import { buildAICreatedService } from './ai-created-pages.js';
 import { compileRow } from '../src/compile/index.js';
-import { importT42, exportServiceToT42 } from '../src/tti/index.js';
+import { importT42 } from '../src/tti/index.js';
 import type { TeletextPage, TeletextService } from '../src/model/types.js';
 
 // ─── State ──────────────────────────────────────────────────────
@@ -245,17 +245,6 @@ document.getElementById('btnLoadT42')!.onclick = () => {
       navigateTo(service.pages[0].pageNumber);
     }
   });
-};
-
-document.getElementById('btnExportT42')!.onclick = () => {
-  const t42 = exportServiceToT42(service);
-  const blob = new Blob([t42], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'teletext-service.t42';
-  a.click();
-  URL.revokeObjectURL(url);
 };
 
 // ─── Init ───────────────────────────────────────────────────────

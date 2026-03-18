@@ -11,7 +11,7 @@ import { renderToBuffer, BUFFER_WIDTH, BUFFER_HEIGHT } from '../src/render-buffe
 import { createTimingState, advanceTiming } from '../src/timing-engine/timing-engine.js';
 import { compileRow } from '../src/compile/index.js';
 import { createCRTOverlay } from '../src/crt/shaderOverlay.js';
-import { importTti, exportPageToTti, importT42 } from '../src/tti/index.js';
+import { importTti, exportPageToTti, importT42, exportServiceToT42 } from '../src/tti/index.js';
 import { createEmptyPage } from '../src/model/factories.js';
 import { rgbaToGrayscale, applyThreshold, pixelsToSextants, fitToRegion, buildFullColorRowTokens } from '../src/import/index.js';
 import type { TeletextRow } from '../src/model/types.js';
@@ -703,38 +703,30 @@ updateSubLabel();
 // ─── Export ─────────────────────────────────────────────────────
 
 document.getElementById('btnExport')!.onclick = () => {
-  const page = createEmptyPage(0x100);
-  for (let r = 0; r < 24; r++) {
-    const result = compileVisualRow(grid[r]);
-    page.subpages[0].rows[r] = { index: r, tokens: result.tokens };
-  }
-  const tti = exportPageToTti(page);
-  const blob = new Blob([tti], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'page.tti'; a.click();
-  URL.revokeObjectURL(url);
-  showFeedback('Exported as TTI');
-};
-
-// ─── Import TTI ─────────────────────────────────────────────────
-
-document.getElementById('btnImportTTI')!.onclick = () => (document.getElementById('fileTTI') as HTMLInputElement).click();
-(document.getElementById('fileTTI') as HTMLInputElement).onchange = function() {
-  const file = (this as HTMLInputElement).files?.[0];
-  if (!file) return;
-  (this as HTMLInputElement).value = '';
-  file.text().then(text => {
-    const svc = importTti(text);
-    if (svc.pages.length > 0) {
-      const sp = svc.pages[0].subpages[0];
-      pushUndo();
+  // Build a service from all pages
+  const svc = { id: 'export', title: 'Teletext', pages: [] as any[], defaultLanguageSubset: 'english' as const };
+  saveCurrentPage();
+  for (const p of pages) {
+    const page = createEmptyPage(p.id);
+    page.subpages = [];
+    for (let s = 0; s < p.subgrids.length; s++) {
+      const sub = { ...page.subpages[0] ?? { subcode: s, rows: [], languageSubset: 'english' as const, pageFlags: { erasePage: true, newsflash: false, subtitle: false, suppressHeader: false, updateIndicator: false, interruptedSequence: false, inhibitDisplay: false } } };
+      sub.subcode = s;
+      sub.rows = [];
       for (let r = 0; r < 24; r++) {
-        const compiled = compileRow(sp.rows[r]);
-        grid[r] = decompileToVisualRow(Array.from(compiled.bytes40));
+        const result = compileVisualRow(p.subgrids[s][r]);
+        sub.rows.push({ index: r, tokens: result.tokens });
       }
-      showFeedback(`Imported ${svc.pages.length} page(s)`);
+      page.subpages.push(sub);
     }
-  });
+    svc.pages.push(page);
+  }
+  const t42 = exportServiceToT42(svc as any);
+  const blob = new Blob([t42], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'teletext.t42'; a.click();
+  URL.revokeObjectURL(url);
+  showFeedback(`Exported ${pages.length} page(s) as .t42`);
 };
 
 // ─── Import T42 ─────────────────────────────────────────────────
