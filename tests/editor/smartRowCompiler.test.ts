@@ -31,39 +31,55 @@ describe('smartRowCompiler', () => {
     expect(result.tokens[1]).toEqual({ kind: 'char', codepoint7: 0x49 });
   });
 
-  it('inserts alpha color code when fg changes', () => {
+  it('places control code BEFORE the cell that needs it', () => {
+    // Red H at position 1 — control code goes at position 0
     const row = makeRow([
-      { char: 0x48, fg: 1 }, // H in red
+      { char: 0x20, fg: 7 }, // space (will be overwritten by control code)
+      { char: 0x48, fg: 1 }, // H in red at position 1
     ]);
     const result = compileVisualRow(row);
-    // Should have: control(0x01=red), then H
+    // Position 0: control code (red), Position 1: H
     expect(result.tokens[0]).toEqual({ kind: 'control', codepoint7: 0x01 });
     expect(result.tokens[1]).toEqual({ kind: 'char', codepoint7: 0x48 });
   });
 
-  it('inserts mosaic color code for mosaic cells', () => {
+  it('cell at position 0 with non-default color has no room for control code', () => {
+    // Red H at position 0 — no room before it for a control code
     const row = makeRow([
-      { char: 0x3F, fg: 2, mosaic: true }, // green mosaic
+      { char: 0x48, fg: 1 }, // H in red at position 0
+    ]);
+    const result = compileVisualRow(row);
+    // Position 0 should still be the H (can't place control before position 0)
+    // The color won't be applied correctly, but position is preserved
+    expect(result.tokens.length).toBe(40);
+  });
+
+  it('mosaic control code placed before mosaic cell', () => {
+    const row = makeRow([
+      { char: 0x20, fg: 7 }, // space (overwritten by control code)
+      { char: 0x3F, fg: 2, mosaic: true }, // green mosaic at position 1
     ]);
     const result = compileVisualRow(row);
     expect(result.tokens[0]).toEqual({ kind: 'control', codepoint7: 0x12 }); // mosaic green
     expect(result.tokens[1]).toEqual({ kind: 'mosaic', codepoint7: 0x3F, contiguous: true });
   });
 
-  it('multiple color changes in one row', () => {
+  it('multiple color changes overwrite preceding cells', () => {
     const row = makeRow([
-      { char: 0x41, fg: 1 }, // A red
-      { char: 0x42, fg: 1 }, // B red (no change)
-      { char: 0x43, fg: 2 }, // C green (change)
+      { char: 0x20, fg: 7 }, // overwritten by red code
+      { char: 0x41, fg: 1 }, // A red at position 1
+      { char: 0x20, fg: 1 }, // overwritten by green code
+      { char: 0x43, fg: 2 }, // C green at position 3
     ]);
     const result = compileVisualRow(row);
-    // red code, A, B, green code, C
     const controls = result.tokens.filter(t => t.kind === 'control');
     expect(controls.length).toBe(2); // red + green
+    // Positions are preserved
+    expect(result.tokens[1].codepoint7).toBe(0x41); // A still at pos 1
+    expect(result.tokens[3].codepoint7).toBe(0x43); // C still at pos 3
   });
 
-  it('compiles result fits in 40 columns', () => {
-    // Fill entire row with different colors — maximum control code overhead
+  it('compiles result is always exactly 40 tokens', () => {
     const row = makeRow(Array.from({ length: 40 }, (_, i) => ({ char: 0x41, fg: i % 8 })));
     const result = compileVisualRow(row);
     expect(result.tokens.length).toBe(40);
@@ -71,20 +87,17 @@ describe('smartRowCompiler', () => {
 
   it('renders correctly through the full pipeline', () => {
     const row = makeRow([
-      { char: 0x48, fg: 1 },
-      { char: 0x49, fg: 1 },
+      { char: 0x20, fg: 7 }, // space (overwritten by control code)
+      { char: 0x48, fg: 1 }, // H in red at position 1
+      { char: 0x49, fg: 1 }, // I in red at position 2
     ]);
     const result = compileVisualRow(row);
     const compiled = compileRow({ index: 0, tokens: result.tokens });
-    // Should produce valid 40-byte row
     expect(compiled.bytes40.length).toBe(40);
-    // Run through state machine
     const cells = processRow(Array.from(compiled.bytes40));
-    // The 'H' should be red
-    // Find the first non-space cell
-    const hCell = cells.find(c => c.char === 0x48);
-    expect(hCell).toBeDefined();
-    expect(hCell!.fgColor).toBe(1); // red
+    // H should be at position 1 and be red
+    expect(cells[1].char).toBe(0x48);
+    expect(cells[1].fgColor).toBe(1); // red
   });
 });
 
@@ -93,8 +106,8 @@ describe('decompileToVisualRow', () => {
     const bytes = new Array(40).fill(0x20);
     const visual = decompileToVisualRow(bytes);
     expect(visual.length).toBe(40);
-    expect(visual[0].fg).toBe(7); // default white
-    expect(visual[0].bg).toBe(0); // default black
+    expect(visual[0].fg).toBe(7);
+    expect(visual[0].bg).toBe(0);
   });
 
   it('decompiles row with color code', () => {
@@ -104,24 +117,21 @@ describe('decompileToVisualRow', () => {
     const visual = decompileToVisualRow(bytes);
     expect(visual[0].char).toBe(0x20); // control code = space
     expect(visual[1].fg).toBe(1); // red
-    expect(visual[1].char).toBe(0x48); // H
+    expect(visual[1].char).toBe(0x48);
   });
 
-  it('round-trips: compile → render → decompile preserves colors', () => {
+  it('round-trips: compile → render → decompile preserves positions', () => {
     const row = makeRow([
-      { char: 0x48, fg: 1 }, // red H
-      { char: 0x49, fg: 2 }, // green I
+      { char: 0x20, fg: 7 },
+      { char: 0x48, fg: 1 }, // red H at position 1
+      { char: 0x49, fg: 1 }, // red I at position 2
     ]);
     const compiled = compileVisualRow(row);
     const bytes = compileRow({ index: 0, tokens: compiled.tokens }).bytes40;
     const decompiled = decompileToVisualRow(Array.from(bytes));
 
-    // Find the H and I in the decompiled row
-    const hIdx = decompiled.findIndex(c => c.char === 0x48);
-    const iIdx = decompiled.findIndex(c => c.char === 0x49);
-    expect(hIdx).toBeGreaterThanOrEqual(0);
-    expect(iIdx).toBeGreaterThanOrEqual(0);
-    expect(decompiled[hIdx].fg).toBe(1); // red
-    expect(decompiled[iIdx].fg).toBe(2); // green
+    // H should be at position 1, red
+    expect(decompiled[1].char).toBe(0x48);
+    expect(decompiled[1].fg).toBe(1);
   });
 });
