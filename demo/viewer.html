@@ -6,29 +6,72 @@
   <title>AI-Created Teletext</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0a0a0a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: 'SF Mono', 'Consolas', monospace; }
-    .tv-frame { background: #1a1a1a; border-radius: 12px; padding: 20px; box-shadow: 0 0 60px rgba(0,255,255,0.05); max-height: 100vh; }
-    #screen { image-rendering: pixelated; border: 3px solid #222; display: block; max-height: calc(100vh - 180px); width: auto; }
-    .controls { margin-top: 16px; display: flex; gap: 12px; align-items: center; }
-    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-    .numpad button { width: 44px; height: 38px; background: #222; color: #ccc; border: 1px solid #444; border-radius: 4px; font-family: inherit; font-size: 16px; cursor: pointer; }
-    .numpad button:hover { background: #333; }
-    .numpad button:active { background: #0088aa; color: #fff; }
-    .numpad button.wide { grid-column: span 2; width: auto; }
-    .page-input { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
-    .page-display { background: #000; color: #0ff; font-size: 24px; padding: 6px 12px; border: 1px solid #333; border-radius: 4px; min-width: 80px; text-align: center; letter-spacing: 2px; }
-    .fastext-bar { display: flex; gap: 0; margin-top: 4px; }
-    .fastext-btn { flex: 1; height: 28px; border: none; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: bold; color: #fff; }
+    html, body { height: 100%; overflow: hidden; }
+    body { background: #0a0a0a; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', 'Consolas', monospace; }
+
+    .tv-frame {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: min(2vh, 16px);
+      box-shadow: 0 0 60px rgba(0,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      max-width: 96vw;
+      max-height: 96vh;
+    }
+
+    .screen-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #screen {
+      image-rendering: pixelated;
+      border: 3px solid #222;
+      display: block;
+      /* 4:3 aspect, scale to fit container */
+      width: 100%;
+      max-height: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: contain;
+    }
+
+    .fastext-bar { display: flex; gap: 0; flex-shrink: 0; }
+    .fastext-btn { flex: 1; height: min(28px, 4vh); border: none; cursor: pointer; font-family: inherit; font-size: min(11px, 1.5vh); font-weight: bold; color: #fff; }
     .fastext-btn.red { background: #c00; }
     .fastext-btn.green { background: #0a0; }
     .fastext-btn.yellow { background: #aa0; color: #000; }
     .fastext-btn.cyan { background: #0aa; color: #000; }
-    .info { color: #444; font-size: 11px; margin-top: 8px; text-align: center; }
+
+    .controls { display: flex; gap: min(12px, 1.5vw); align-items: center; justify-content: center; padding: min(8px, 1vh) 0; flex-shrink: 0; }
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+    .numpad button { width: min(44px, 6vw); height: min(36px, 4.5vh); background: #222; color: #ccc; border: 1px solid #444; border-radius: 4px; font-family: inherit; font-size: min(14px, 2vh); cursor: pointer; }
+    .numpad button:hover { background: #333; }
+    .numpad button:active { background: #0088aa; color: #fff; }
+
+    .page-input { display: flex; align-items: center; gap: min(8px, 1vw); }
+    .page-display { background: #000; color: #0ff; font-size: min(20px, 3vh); padding: 4px 10px; border: 1px solid #333; border-radius: 4px; min-width: 70px; text-align: center; letter-spacing: 2px; }
+    .sub-btn { background: #222; color: #ccc; border: 1px solid #444; border-radius: 4px; padding: 3px 10px; cursor: pointer; font-family: inherit; font-size: min(12px, 1.8vh); }
+    .sub-btn:hover { background: #333; }
+    #subDisplay { color: #888; font-size: min(11px, 1.5vh); min-width: 28px; text-align: center; }
+
+    .bottom-row { display: flex; gap: min(8px, 1vw); justify-content: center; align-items: center; padding: min(4px, 0.5vh) 0; flex-shrink: 0; }
+    .bottom-row button { background: #222; color: #ccc; border: 1px solid #444; border-radius: 4px; padding: 4px min(12px, 1.5vw); cursor: pointer; font-family: inherit; font-size: min(11px, 1.5vh); }
+    .bottom-row button:hover { background: #333; }
+
+    .info { color: #444; font-size: min(10px, 1.4vh); text-align: center; flex-shrink: 0; padding: min(4px, 0.5vh) 0; }
+
+    input[type="file"] { display: none; }
   </style>
 </head>
 <body>
   <div class="tv-frame">
-    <canvas id="screen" width="960" height="720"></canvas>
+    <div class="screen-wrap">
+      <canvas id="screen" width="960" height="720"></canvas>
+    </div>
     <div class="fastext-bar">
       <button class="fastext-btn red" id="ftRed">100</button>
       <button class="fastext-btn green" id="ftGreen">200</button>
@@ -44,20 +87,20 @@
       </div>
       <div class="page-input">
         <div class="page-display" id="pageDisplay">P100</div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <button id="btnSubPrev" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:13px" title="Previous subpage (PgUp)">&#9650;</button>
-          <button id="btnSubNext" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:13px" title="Next subpage (PgDn)">&#9660;</button>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <button class="sub-btn" id="btnSubPrev" title="Previous subpage (PgUp)">&#9650;</button>
+          <button class="sub-btn" id="btnSubNext" title="Next subpage (PgDn)">&#9660;</button>
         </div>
-        <div id="subDisplay" style="color:#888;font-size:11px;min-width:30px;text-align:center">1/1</div>
+        <div id="subDisplay">1/1</div>
       </div>
     </div>
-    <div class="info">Type a page number or use the keypad. Arrow up/down or PgUp/PgDn for subpages. R to reveal.</div>
-    <div style="margin-top:8px;display:flex;gap:8px;justify-content:center">
-      <button id="btnLoadT42" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px 16px;cursor:pointer;font-family:inherit;font-size:12px">Load T42 File</button>
-      <button id="btnExportT42" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:6px 16px;cursor:pointer;font-family:inherit;font-size:12px">Export T42</button>
+    <div class="info">Type page number or use keypad. Arrows for subpages. R to reveal.</div>
+    <div class="bottom-row">
+      <button id="btnLoadT42">Load T42</button>
+      <button id="btnExportT42">Export T42</button>
     </div>
   </div>
-  <input type="file" id="fileT42" accept=".t42" style="display:none">
+  <input type="file" id="fileT42" accept=".t42">
   <script type="module" src="./viewer-main.ts"></script>
 </body>
 </html>
