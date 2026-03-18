@@ -1,14 +1,10 @@
 /**
- * Smart row compiler: converts a VisualRow (40 cells with desired colors)
- * into an optimal TeletextToken stream with control codes auto-inserted.
+ * Smart row compiler: converts a VisualRow into TeletextTokens.
  *
- * KEY DESIGN: visual cell i ALWAYS maps to screen column i.
- * Control codes overwrite PRECEDING cells (showing as spaces) rather
- * than inserting before cells (which would shift everything right).
- *
- * When a color change is needed at cell i, control codes are placed
- * at cells i-N through i-1. Those cells become spaces. This keeps
- * the 1:1 mapping between visual grid position and screen position.
+ * Cell i always maps to screen column i (1:1).
+ * When a color/mode change is needed, control codes are placed at
+ * the cells immediately BEFORE the transition. Those cells' content
+ * is sacrificed (shown as spaces).
  */
 
 import type { TeletextToken } from '../model/types.js';
@@ -33,12 +29,12 @@ function defaultState(): RowState {
 }
 
 /**
- * Compute control codes needed to transition state to match a cell.
- * Mutates state to reflect the new state after codes.
+ * Compute control codes to transition from current state to desired cell.
  */
 function transitionCodes(state: RowState, cell: VisualCell): number[] {
   const codes: number[] = [];
 
+  // Background change
   if (state.bg !== cell.bg) {
     if (cell.bg === 0) {
       codes.push(BLACK_BG);
@@ -55,12 +51,14 @@ function transitionCodes(state: RowState, cell: VisualCell): number[] {
     }
   }
 
+  // Foreground color and/or mode change
   if (state.fg !== cell.fg || state.mosaic !== cell.mosaic) {
     codes.push(cell.mosaic ? MOSAIC_BASE + cell.fg : ALPHA_BASE + cell.fg);
     state.fg = cell.fg;
     state.mosaic = cell.mosaic;
   }
 
+  // Contiguous/separated
   if (cell.mosaic && state.contiguous !== cell.contiguous) {
     codes.push(cell.contiguous ? CONTIGUOUS : SEPARATED);
     state.contiguous = cell.contiguous;
@@ -70,72 +68,82 @@ function transitionCodes(state: RowState, cell: VisualCell): number[] {
 }
 
 /**
- * Compile a VisualRow into TeletextTokens.
- * Cell i always maps to screen column i (1:1).
+ * Check if a cell needs any state transition from the current state.
  */
-export function compileVisualRow(visual: VisualRow): VisualCompileResult {
-  // Build a 40-element output array: each slot is either a control code or a visible cell
-  const output: TeletextToken[] = new Array(40);
-  const cellToCol: number[] = new Array(40).fill(-1);
+function needsTransition(state: RowState, cell: VisualCell): boolean {
+  const isBlankSpace = cell.char === 0x20 && !cell.mosaic;
+  if (isBlankSpace) {
+    return state.bg !== cell.bg;
+  }
+  return state.fg !== cell.fg ||
+         state.mosaic !== cell.mosaic ||
+         state.bg !== cell.bg ||
+         (cell.mosaic && state.contiguous !== cell.contiguous);
+}
 
-  // First pass: fill all slots with visible cells
+export function compileVisualRow(visual: VisualRow): VisualCompileResult {
+  // Phase 1: figure out where transitions happen and how many codes each needs
+  const state1 = defaultState();
+  const transitionsNeeded: number[] = new Array(40).fill(0); // codes needed before cell i
+
   for (let i = 0; i < 40; i++) {
     const cell = visual[i];
-    if (cell.mosaic) {
-      output[i] = { kind: 'mosaic', codepoint7: cell.char, contiguous: cell.contiguous };
-    } else {
-      output[i] = { kind: 'char', codepoint7: cell.char };
+    if (needsTransition(state1, cell)) {
+      const s = { ...state1 };
+      const codes = transitionCodes(s, cell);
+      transitionsNeeded[i] = codes.length;
+      Object.assign(state1, s);
     }
-    cellToCol[i] = i;
   }
 
-  // Second pass: find transitions and place control codes BEFORE each one
-  // Control codes overwrite preceding cells (they become spaces)
-  const state = defaultState();
+  // Phase 2: build the 40-token output
+  // For each transition at cell i that needs N codes, place N control codes
+  // at positions (i-N) through (i-1). Mark those slots.
+  const slotContent: Array<{ type: 'control'; code: number } | { type: 'cell'; idx: number }> = [];
+  for (let i = 0; i < 40; i++) {
+    slotContent.push({ type: 'cell', idx: i });
+  }
 
+  // Apply transitions: overwrite preceding slots with control codes
+  const state2 = defaultState();
   for (let i = 0; i < 40; i++) {
     const cell = visual[i];
-    const isSpace = cell.char === 0x20 && !cell.mosaic;
+    if (needsTransition(state2, cell)) {
+      const s = { ...state2 };
+      const codes = transitionCodes(s, cell);
 
-    const needsTransition = isSpace
-      ? state.bg !== cell.bg
-      : (state.fg !== cell.fg || state.mosaic !== cell.mosaic ||
-         state.bg !== cell.bg ||
-         (cell.mosaic && state.contiguous !== cell.contiguous));
-
-    if (needsTransition) {
-      const stateCopy: RowState = { ...state };
-      let codes: number[];
-
-      if (isSpace && state.bg !== cell.bg && cell.bg === 0) {
-        codes = [BLACK_BG];
-        stateCopy.bg = 0;
-      } else if (isSpace && state.bg === cell.bg) {
-        codes = [];
-      } else {
-        codes = transitionCodes(stateCopy, cell);
-      }
-
-      if (codes.length > 0) {
-        // Place codes at positions (i - codes.length) through (i - 1)
-        // These positions get overwritten with control codes
-        for (let j = 0; j < codes.length; j++) {
-          const pos = i - codes.length + j;
-          if (pos >= 0) {
-            output[pos] = { kind: 'control', codepoint7: codes[j] };
-            cellToCol[pos] = -1; // no longer a visible cell
-          }
+      // Place codes at (i - codes.length) through (i - 1)
+      for (let j = 0; j < codes.length; j++) {
+        const pos = i - codes.length + j;
+        if (pos >= 0) {
+          slotContent[pos] = { type: 'control', code: codes[j] };
         }
-        Object.assign(state, stateCopy);
       }
+      Object.assign(state2, s);
+    }
+  }
+
+  // Phase 3: convert slots to tokens
+  const tokens: TeletextToken[] = [];
+  const cellToCol: number[] = new Array(40).fill(-1);
+
+  for (let i = 0; i < 40; i++) {
+    const slot = slotContent[i];
+    if (slot.type === 'control') {
+      tokens.push({ kind: 'control', codepoint7: slot.code });
     } else {
-      // No transition needed — just track state for spaces
-      // (spaces don't change fg/mode but we need to keep state consistent)
+      const cell = visual[slot.idx];
+      cellToCol[slot.idx] = i;
+      if (cell.mosaic) {
+        tokens.push({ kind: 'mosaic', codepoint7: cell.char, contiguous: cell.contiguous });
+      } else {
+        tokens.push({ kind: 'char', codepoint7: cell.char });
+      }
     }
   }
 
   const visibleColumns = cellToCol.filter(c => c >= 0).length;
-  return { tokens: output, visibleColumns, cellToCol };
+  return { tokens, visibleColumns, cellToCol };
 }
 
 /**

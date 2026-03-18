@@ -160,6 +160,8 @@ document.querySelectorAll('.tool-btn').forEach(btn => {
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     toolLabel.textContent = (btn as HTMLElement).textContent?.trim() || activeTool;
+    // Clear selection when switching away from select tool
+    if (activeTool !== 'select') selection = null;
   });
 });
 
