@@ -186,7 +186,6 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       // Preserves the cell's character and mosaic pattern, just changes fg/bg
       cell.fg = activeFg;
       cell.bg = activeBg;
-      }
       break;
 
     case 'erase':
