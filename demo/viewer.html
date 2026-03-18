@@ -16,27 +16,26 @@
       box-shadow: 0 0 60px rgba(0,255,255,0.05);
       display: flex;
       flex-direction: column;
-      max-width: 96vw;
-      max-height: 96vh;
+      width: min(96vw, calc(96vh * 4 / 3 + 40px));
+      height: 96vh;
     }
 
     .screen-wrap {
-      flex: 1;
+      flex: 1 1 0;
       min-height: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
 
     #screen {
       image-rendering: pixelated;
       border: 3px solid #222;
       display: block;
-      /* 4:3 aspect, scale to fit container */
-      width: 100%;
+      max-width: 100%;
       max-height: 100%;
       aspect-ratio: 4 / 3;
-      object-fit: contain;
     }
 
     .fastext-bar { display: flex; gap: 0; flex-shrink: 0; }
