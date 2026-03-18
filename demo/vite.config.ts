@@ -3,6 +3,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: '.',
+  publicDir: false,
   build: {
     outDir: '../dist',
     emptyOutDir: true,
@@ -12,5 +13,6 @@ export default defineConfig({
         editor: resolve(__dirname, 'editor.html'),
       },
     },
+    copyPublicDir: false,
   },
 });

@@ -6,14 +6,31 @@ import { processPage } from '../src/state-machine/state-machine.js';
 import { renderToBuffer, BUFFER_WIDTH, BUFFER_HEIGHT } from '../src/render-buffer/render-buffer.js';
 import { createTimingState, advanceTiming } from '../src/timing-engine/timing-engine.js';
 import { createCRTOverlay } from '../src/crt/shaderOverlay.js';
-import { buildAICreatedService } from './ai-created-pages.js';
 import { compileRow } from '../src/compile/index.js';
 import { importT42 } from '../src/tti/index.js';
 import type { TeletextPage, TeletextService } from '../src/model/types.js';
 
 // ─── State ──────────────────────────────────────────────────────
 
-let service: TeletextService = buildAICreatedService();
+let service: TeletextService = { id: 'loading', title: 'Loading...', pages: [], defaultLanguageSubset: 'english' };
+
+// Load the default T42 file
+fetch('/ai-created.t42')
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    const result = importT42(new Uint8Array(buf));
+    if (result.pages.length > 0) {
+      service = { id: 'ai-created', title: 'AI-Created Teletext', pages: result.pages, defaultLanguageSubset: 'english' };
+      navigateTo(0x100);
+    }
+  })
+  .catch(() => {
+    // Fallback: load from TypeScript builder if T42 not available
+    import('./ai-created-pages.js').then(m => {
+      service = m.buildAICreatedService();
+      navigateTo(0x100);
+    });
+  });
 let currentPageNumber = 0x100;
 let currentSubpage = 0;
 let reveal = false;

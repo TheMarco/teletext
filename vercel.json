@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx vite build demo --outDir ../dist",
+  "buildCommand": "npx vite build demo --outDir ../dist && cp demo/ai-created.t42 dist/",
   "outputDirectory": "dist",
   "framework": null
 }
