@@ -345,15 +345,39 @@ canvas.addEventListener('contextmenu', (e) => {
   applyTool(row, col, sx, sy, true);
 });
 
-// ─── Keyboard (text typing) ────────────────────────────────────
+// ─── Keyboard ───────────────────────────────────────────────────
+
+// Batch undo: only push undo state when typing starts, not on every keystroke
+let typingUndoPushed = false;
+function ensureTypingUndo() {
+  if (!typingUndoPushed) { pushUndo(); typingUndoPushed = true; }
+}
+// Reset typing batch after a pause
+let typingTimer: number | null = null;
+function resetTypingBatch() {
+  if (typingTimer) clearTimeout(typingTimer);
+  typingTimer = window.setTimeout(() => { typingUndoPushed = false; }, 1000);
+}
+
+function updateCursorDisplay() {
+  cursorLabel.textContent = `${cursorRow}, ${cursorCol}`;
+}
 
 document.addEventListener('keydown', (e) => {
-  // Undo/redo
+  // Ignore if focus is in an input/select
+  const tag = (e.target as HTMLElement).tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+  // ─── Global shortcuts (always active) ───
   if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); return; }
   if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); doUndo(); return; }
 
+  // Escape clears selection
+  if (e.key === 'Escape') { selection = null; return; }
+
   // Delete selection
-  if (e.key === 'Delete' && selection && activeTool === 'select') {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selection && activeTool === 'select') {
+    e.preventDefault();
     pushUndo();
     for (let r = selection.r1; r <= selection.r2; r++) {
       for (let c = selection.c1; c <= selection.c2; c++) {
@@ -365,18 +389,72 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Escape clears selection
-  if (e.key === 'Escape') { selection = null; return; }
+  // ─── Navigation (all tools) ───
+  if (e.key === 'ArrowRight') { e.preventDefault(); cursorCol = Math.min(39, cursorCol + 1); updateCursorDisplay(); return; }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); cursorCol = Math.max(0, cursorCol - 1); updateCursorDisplay(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); cursorRow = Math.min(23, cursorRow + 1); updateCursorDisplay(); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); cursorRow = Math.max(0, cursorRow - 1); updateCursorDisplay(); return; }
 
-  // Navigation
-  if (e.key === 'ArrowRight') { cursorCol = Math.min(39, cursorCol + 1); cursorLabel.textContent = `${cursorRow}, ${cursorCol}`; return; }
-  if (e.key === 'ArrowLeft') { cursorCol = Math.max(0, cursorCol - 1); cursorLabel.textContent = `${cursorRow}, ${cursorCol}`; return; }
-  if (e.key === 'ArrowDown') { cursorRow = Math.min(23, cursorRow + 1); cursorLabel.textContent = `${cursorRow}, ${cursorCol}`; return; }
-  if (e.key === 'ArrowUp') { cursorRow = Math.max(0, cursorRow - 1); cursorLabel.textContent = `${cursorRow}, ${cursorCol}`; return; }
-  if (e.key === 'Enter') { cursorRow = Math.min(23, cursorRow + 1); cursorCol = 0; cursorLabel.textContent = `${cursorRow}, ${cursorCol}`; return; }
+  // ─── Text tool input ───
+  if (activeTool === 'text' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      typingUndoPushed = false; // new line = new undo batch
+      cursorRow = Math.min(23, cursorRow + 1);
+      cursorCol = 0;
+      updateCursorDisplay();
+      return;
+    }
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (cursorCol > 0) {
+        cursorCol--;
+        ensureTypingUndo(); resetTypingBatch();
+        grid[cursorRow][cursorCol] = { char: 0x20, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
+        updateCursorDisplay();
+      }
+      return;
+    }
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      ensureTypingUndo(); resetTypingBatch();
+      grid[cursorRow][cursorCol] = { char: 0x20, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      cursorCol = Math.min(39, cursorCol + 4 - (cursorCol % 4));
+      updateCursorDisplay();
+      return;
+    }
+    // Printable character — including numbers, letters, symbols, space
+    if (e.key.length === 1 && !e.shiftKey) {
+      const code = e.key.charCodeAt(0);
+      if (code >= 0x20 && code <= 0x7E) {
+        e.preventDefault();
+        ensureTypingUndo(); resetTypingBatch();
+        grid[cursorRow][cursorCol] = { char: code, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
+        cursorCol = Math.min(39, cursorCol + 1);
+        updateCursorDisplay();
+        return;
+      }
+    }
+    // Shift+letter = uppercase (e.key already reflects this)
+    if (e.key.length === 1 && e.shiftKey) {
+      const code = e.key.charCodeAt(0);
+      if (code >= 0x20 && code <= 0x7E) {
+        e.preventDefault();
+        ensureTypingUndo(); resetTypingBatch();
+        grid[cursorRow][cursorCol] = { char: code, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
+        cursorCol = Math.min(39, cursorCol + 1);
+        updateCursorDisplay();
+        return;
+      }
+    }
+  }
 
-  // Color shortcuts: 1-8 fg, shift+1-8 bg
-  if (!e.metaKey && !e.ctrlKey && !e.altKey && e.key >= '1' && e.key <= '8') {
+  // ─── Color shortcuts (NOT in text mode — text mode types normally) ───
+  if (activeTool !== 'text' && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= '1' && e.key <= '8') {
     const idx = parseInt(e.key) - 1;
     if (e.shiftKey) { activeBg = idx; bgLabel.textContent = COLOR_NAMES[idx]; }
     else { activeFg = idx; fgLabel.textContent = COLOR_NAMES[idx]; }
@@ -384,34 +462,13 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Typing in text mode
-  if (activeTool === 'text' && !e.metaKey && !e.ctrlKey) {
-    if (e.key === 'Backspace') {
-      cursorCol = Math.max(0, cursorCol - 1);
-      pushUndo();
-      grid[cursorRow][cursorCol] = { char: 0x20, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
-      cursorLabel.textContent = `${cursorRow}, ${cursorCol}`;
-      return;
-    }
-    if (e.key === 'Delete') {
-      pushUndo();
-      grid[cursorRow][cursorCol] = { char: 0x20, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
-      return;
-    }
-    if (e.key.length === 1 && e.key.charCodeAt(0) >= 0x20 && e.key.charCodeAt(0) <= 0x7E) {
-      pushUndo();
-      grid[cursorRow][cursorCol] = { char: e.key.charCodeAt(0), fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
-      cursorCol = Math.min(39, cursorCol + 1);
-      cursorLabel.textContent = `${cursorRow}, ${cursorCol}`;
-      return;
-    }
-  }
-
-  // Paint mode: space places mosaic block
+  // ─── Paint tool: space places mosaic block ───
   if (activeTool === 'paint' && e.key === ' ') {
+    e.preventDefault();
     pushUndo();
     grid[cursorRow][cursorCol] = { char: activeMosaic, fg: activeFg, bg: activeBg, mosaic: true, contiguous: true };
     cursorCol = Math.min(39, cursorCol + 1);
+    updateCursorDisplay();
     return;
   }
 });
