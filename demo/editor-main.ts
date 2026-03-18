@@ -31,7 +31,7 @@ let selClipboard: VisualCell[][] | null = null;
 let activeFg = 7; // white
 let activeBg = 0; // black
 let activeChar = 0x20;
-let activeMosaic = 0x3F; // full block
+// activeMosaic removed — paint mode now works per sub-block
 let isDragging = false;
 let timing = createTimingState();
 
@@ -114,44 +114,6 @@ for (let ch = 0x20; ch <= 0x7E; ch++) {
   glyphGrid.appendChild(div);
 }
 
-// ─── Mosaic block picker ────────────────────────────────────────
-
-const mosaicGrid = document.getElementById('mosaicGrid')!;
-// All 64 possible mosaic patterns (6-bit: 2×3 sextant grid)
-const ALL_MOSAICS: number[] = [];
-for (let bits = 0; bits < 64; bits++) {
-  ALL_MOSAICS.push(bits <= 0x1F ? 0x20 + bits : 0x60 + (bits & 0x1F));
-}
-ALL_MOSAICS.forEach(code => {
-  const div = document.createElement('div');
-  div.className = 'mosaic-cell';
-  div.title = `Mosaic 0x${code.toString(16)}`;
-  // Draw the sextant pattern
-  const c = document.createElement('canvas');
-  c.width = 2; c.height = 3;
-  const mctx = c.getContext('2d')!;
-  let bits: number;
-  if (code >= 0x20 && code <= 0x3F) bits = code - 0x20;
-  else if (code >= 0x60 && code <= 0x7F) bits = (code - 0x60) | 0x20;
-  else bits = 0;
-  for (let sy = 0; sy < 3; sy++) {
-    for (let sx = 0; sx < 2; sx++) {
-      mctx.fillStyle = ((bits >> (sy * 2 + sx)) & 1) ? '#fff' : '#333';
-      mctx.fillRect(sx, sy, 1, 1);
-    }
-  }
-  div.appendChild(c);
-  div.onclick = () => {
-    activeMosaic = code;
-    document.querySelectorAll('.mosaic-cell').forEach(el => el.classList.remove('active'));
-    div.classList.add('active');
-    showFeedback('Mosaic block selected');
-  };
-  // Default: select the full block (0x3F)
-  if (code === 0x3F) div.classList.add('active');
-  mosaicGrid.appendChild(div);
-});
-
 // ─── Tool selection ─────────────────────────────────────────────
 
 document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -189,16 +151,21 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'paint':
-      // Paint mosaic: stamp the selected mosaic block
+      // Paint mosaic: toggle individual sextant sub-block
+      // Each cell has 6 sub-blocks (2×3). Click toggles the one under the cursor.
       if (isRightClick) {
-        // Erase: clear to empty mosaic
-        cell.char = 0x20;
-        cell.mosaic = true;
+        // Clear this sub-block
+        let bits = mosaicBits(cell);
+        bits &= ~(1 << (sy * 2 + sx));
+        cell.char = bits === 0 ? 0x20 : bitsToMosaic(bits);
+        cell.mosaic = bits > 0;
         cell.fg = activeFg;
         cell.bg = activeBg;
       } else {
-        // Stamp the active mosaic character
-        cell.char = activeMosaic;
+        // Set this sub-block
+        let bits = cell.mosaic ? mosaicBits(cell) : 0;
+        bits |= (1 << (sy * 2 + sx));
+        cell.char = bitsToMosaic(bits);
         cell.mosaic = true;
         cell.fg = activeFg;
         cell.bg = activeBg;
@@ -468,7 +435,7 @@ document.addEventListener('keydown', (e) => {
   if (activeTool === 'paint' && e.key === ' ') {
     e.preventDefault();
     pushUndo();
-    grid[cursorRow][cursorCol] = { char: activeMosaic, fg: activeFg, bg: activeBg, mosaic: true, contiguous: true };
+    grid[cursorRow][cursorCol] = { char: 0x7F, fg: activeFg, bg: activeBg, mosaic: true, contiguous: true }; // full block
     cursorCol = Math.min(39, cursorCol + 1);
     updateCursorDisplay();
     return;

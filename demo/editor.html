@@ -48,11 +48,7 @@
     .glyph-cell.active { background: #0088aa; color: #fff; }
 
     /* Mosaic picker */
-    .mosaic-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
-    .mosaic-cell { aspect-ratio: 0.67; background: #222; border: 1px solid #333; border-radius: 2px; cursor: pointer; position: relative; }
-    .mosaic-cell:hover { border-color: #0aa; }
-    .mosaic-cell.active { border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.4); }
-    .mosaic-cell canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+    /* mosaic picker removed — paint mode works per sub-block */
 
     /* Canvas area */
     .canvas-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0a; position: relative; }
@@ -103,7 +99,7 @@
     <div class="tools-panel">
       <h3>Tools</h3>
       <div class="tool-btn active" data-tool="text"><span class="tool-icon">A</span>Text</div>
-      <div class="tool-btn" data-tool="paint"><span class="tool-icon">&#9608;</span>Paint Mosaic</div>
+      <div class="tool-btn" data-tool="paint"><span class="tool-icon">&#9608;</span>Paint Blocks</div>
       <div class="tool-btn" data-tool="fill"><span class="tool-icon">&#9619;</span>Fill Color</div>
       <div class="tool-btn" data-tool="erase"><span class="tool-icon">&#9003;</span>Eraser</div>
       <div class="tool-btn" data-tool="picker"><span class="tool-icon">&#128065;</span>Pick Color</div>
@@ -117,9 +113,6 @@
 
       <h3>Characters</h3>
       <div class="glyph-grid" id="glyphGrid"></div>
-
-      <h3>Mosaic Blocks</h3>
-      <div class="mosaic-grid" id="mosaicGrid"></div>
     </div>
 
     <div class="canvas-area">
@@ -159,8 +152,8 @@
     <div style="background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:20px;width:560px;max-height:80vh;overflow-y:auto">
       <h2 style="color:#0ff;font-size:15px;margin-bottom:16px">Import Image</h2>
       <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Start row:</label><input type="number" id="bmpRow" value="2" min="0" max="23" style="flex:1"></div>
-      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Start col:</label><input type="number" id="bmpCol" value="0" min="0" max="39" style="flex:1"></div>
-      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Max cols:</label><input type="number" id="bmpCols" value="39" min="1" max="40" style="flex:1"></div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Start col:</label><input type="number" id="bmpCol" value="1" min="0" max="39" style="flex:1"></div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Max cols:</label><input type="number" id="bmpCols" value="38" min="1" max="40" style="flex:1"></div>
       <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">Max rows:</label><input type="number" id="bmpRows" value="22" min="1" max="24" style="flex:1"></div>
       <div style="display:flex;gap:12px;margin-bottom:8px;align-items:center"><label style="color:#888;width:90px;font-size:12px">BG color:</label><select id="bmpBg" style="flex:1"><option value="0" selected>Black</option><option value="1">Red</option><option value="2">Green</option><option value="3">Yellow</option><option value="4">Blue</option><option value="5">Magenta</option><option value="6">Cyan</option><option value="7">White</option></select></div>
       <div style="display:flex;gap:16px;margin:16px 0">

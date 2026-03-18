@@ -104,7 +104,9 @@ export function compileVisualRow(visual: VisualRow): VisualCompileResult {
     slotContent.push({ type: 'cell', idx: i });
   }
 
-  // Apply transitions: overwrite preceding slots with control codes
+  // Apply transitions: place control codes in preceding slots.
+  // If there's no room before the cell (e.g., cell 0), use the cell's own
+  // slot and subsequent slots for the codes, pushing content right.
   const state2 = defaultState();
   for (let i = 0; i < 40; i++) {
     const cell = visual[i];
@@ -112,11 +114,25 @@ export function compileVisualRow(visual: VisualRow): VisualCompileResult {
       const s = { ...state2 };
       const codes = transitionCodes(s, cell);
 
-      // Place codes at (i - codes.length) through (i - 1)
-      for (let j = 0; j < codes.length; j++) {
-        const pos = i - codes.length + j;
-        if (pos >= 0) {
-          slotContent[pos] = { type: 'control', code: codes[j] };
+      if (codes.length > 0) {
+        // Try to place codes at (i - codes.length) through (i - 1)
+        const startPos = i - codes.length;
+
+        if (startPos >= 0) {
+          // Normal case: enough room before the cell
+          for (let j = 0; j < codes.length; j++) {
+            slotContent[startPos + j] = { type: 'control', code: codes[j] };
+          }
+        } else {
+          // Not enough room before — place codes starting at position 0
+          // and shift the target cell rightward
+          for (let j = 0; j < codes.length && j < 40; j++) {
+            slotContent[j] = { type: 'control', code: codes[j] };
+          }
+          // The cell that needed the transition gets pushed to after the codes
+          if (codes.length < 40) {
+            slotContent[codes.length] = { type: 'cell', idx: i };
+          }
         }
       }
       Object.assign(state2, s);
