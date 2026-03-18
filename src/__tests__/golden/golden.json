@@ -1,0 +1,82 @@
+[
+  {
+    "name": "blank",
+    "description": "Empty page: all spaces, default colors",
+    "hash": "842813a663c25a346f1a57a517f3522b188862b194cb762d7280cdb90cde3e6f",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "colors",
+    "description": "All 7 foreground colors with text labels",
+    "hash": "52d570327e30e99fc1d2efa8c420ac13b75ec8cc62461b964c276c89473d2ad3",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "mosaic",
+    "description": "Mosaic characters: contiguous, separated, patterns",
+    "hash": "709712e856f28eba53dc645a913206ffb642bda677928cd623a25d166ebea6a5",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "double-height",
+    "description": "Double height text with top and bottom halves",
+    "hash": "7295c3b7ca5f1d6f5b6cc5b8b0fd5db58e2617cff0a960b8a0d070696ed1ed0a",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "hold-graphics",
+    "description": "Hold graphics behavior across color changes",
+    "hash": "52da1633033773e96ff7f92ef47c69e30d93356c985b7a2ede41a2cfae05ebd9",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "background",
+    "description": "Background color changes and reset",
+    "hash": "0eb0d322e94548835c5df55d6d5732da2450fc3ee03505d078dd89ee2e07d191",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "flash-off",
+    "description": "Flash OFF phase: flashing text hidden, steady visible",
+    "hash": "990a53d0bd2999ae067e691b06d8b98cdff5fd2dc8ab627424cd06ce64c2941b",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "flash-on",
+    "description": "Flash ON phase: everything visible",
+    "hash": "3af8c8105840a5361a4eacd9fed6a962c60a3c2271e1356f8a4bf0dee7f22ddb",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "conceal-hidden",
+    "description": "Concealed text with reveal OFF",
+    "hash": "68ee272da2ef995550614639a372c126703743f1de85ac22ccdd976260c6af2a",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  },
+  {
+    "name": "conceal-revealed",
+    "description": "Concealed text with reveal ON",
+    "hash": "eb07cb6dc1ba3bac44d4aab20eecb93fb445c4d7695e4be1698f656a7d84472f",
+    "width": 480,
+    "height": 240,
+    "dataLength": 460800
+  }
+]

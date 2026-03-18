@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teletext Editor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --mode-color: #0aa; }
+    body { background: #111; color: #ccc; font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    header { background: #1a1a1a; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 2px solid var(--mode-color); flex-wrap: wrap; }
+    header h1 { font-size: 15px; color: var(--mode-color); font-weight: 600; }
+    .toolbar { display: flex; gap: 3px; align-items: center; }
+    .toolbar button { background: #2a2a2a; color: #bbb; border: 1px solid #444; padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 4px; transition: all 0.15s; }
+    .toolbar button:hover { background: #3a3a3a; color: #fff; }
+    .toolbar button.active { background: var(--mode-color); color: #fff; border-color: var(--mode-color); }
+    .toolbar .sep { width: 1px; height: 24px; background: #333; margin: 0 6px; }
+    .toolbar .mode-btn { font-weight: 600; min-width: 80px; text-align: center; }
+    .toolbar .mode-btn .key { font-size: 9px; opacity: 0.5; display: block; }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .sidebar { width: 210px; background: #1a1a1a; border-right: 1px solid #333; display: flex; flex-direction: column; font-size: 12px; }
+    .sidebar-section { padding: 8px 10px; border-bottom: 1px solid #282828; }
+    .sidebar-section h3 { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .page-list { list-style: none; max-height: 200px; overflow-y: auto; }
+    .page-list li { padding: 4px 8px; cursor: pointer; border-radius: 3px; font-family: 'SF Mono', monospace; font-size: 12px; }
+    .page-list li:hover { background: #2a2a2a; }
+    .page-list li.active { background: var(--mode-color); color: #fff; }
+    .sidebar-btns { display: flex; gap: 4px; margin-top: 6px; }
+    .sidebar-btns button { flex: 1; font-size: 11px; padding: 4px; background: #2a2a2a; color: #bbb; border: 1px solid #444; cursor: pointer; border-radius: 3px; }
+    .sidebar-btns button:hover { background: #3a3a3a; }
+    .subpage-nav { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+    .subpage-nav button { background: #2a2a2a; color: #bbb; border: 1px solid #444; padding: 3px 8px; cursor: pointer; border-radius: 3px; }
+    select, input[type="number"] { background: #2a2a2a; color: #ccc; border: 1px solid #444; padding: 3px 6px; font-family: inherit; font-size: 12px; width: 100%; border-radius: 3px; }
+    .checkbox-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+    .checkbox-row input { width: auto; accent-color: var(--mode-color); }
+    .checkbox-row label { color: #999; font-size: 12px; }
+    .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0a; padding: 8px; position: relative; }
+    #preview { image-rendering: pixelated; border: 3px solid var(--mode-color); cursor: crosshair; max-width: 100%; max-height: calc(100vh - 100px); object-fit: contain; transition: border-color 0.2s; }
+    .mode-hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: var(--mode-color); padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; pointer-events: none; border: 1px solid var(--mode-color); }
+    .panel-right { width: 250px; background: #1a1a1a; border-left: 1px solid #333; overflow-y: auto; font-size: 12px; }
+    .panel-section { padding: 8px 10px; border-bottom: 1px solid #282828; }
+    .panel-section h3 { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .info-row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .info-label { color: #666; }
+    .info-value { color: #ddd; font-family: 'SF Mono', monospace; }
+    .color-swatch { display: inline-block; width: 24px; height: 24px; border: 2px solid #333; cursor: pointer; border-radius: 3px; transition: all 0.15s; }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+    .color-palette { display: flex; gap: 4px; margin-top: 4px; }
+    .ctrl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+    .ctrl-btn { background: #222; color: #aaa; border: 1px solid #3a3a3a; padding: 4px 2px; cursor: pointer; font-size: 10px; text-align: center; border-radius: 3px; font-family: 'SF Mono', monospace; transition: all 0.15s; }
+    .ctrl-btn:hover { background: #444; color: #fff; transform: scale(1.05); }
+    #rowBytes { font-size: 10px; word-break: break-all; color: #555; font-family: 'SF Mono', monospace; line-height: 1.6; }
+    .bottom-bar { background: #1a1a1a; border-top: 2px solid var(--mode-color); padding: 6px 16px; font-size: 12px; display: flex; gap: 20px; align-items: center; }
+    .bottom-bar .cell-info { color: var(--mode-color); font-family: 'SF Mono', monospace; font-weight: 600; }
+    .bottom-bar .action-feedback { color: #888; font-style: italic; margin-left: auto; }
+    .help-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; }
+    .help-overlay.open { display: flex; }
+    .help-content { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 24px; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+    .help-content h2 { color: #0ff; font-size: 18px; margin-bottom: 16px; }
+    .help-content h3 { color: #ff0; font-size: 13px; margin: 12px 0 6px; }
+    .help-content p { color: #bbb; line-height: 1.6; margin-bottom: 8px; }
+    .help-content kbd { background: #333; padding: 2px 6px; border-radius: 3px; font-family: 'SF Mono', monospace; font-size: 11px; border: 1px solid #555; }
+    .help-content .shortcut-row { display: flex; justify-content: space-between; padding: 3px 0; }
+    .help-content .shortcut-row span:first-child { color: #888; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#1a1a1a; border:1px solid #444; border-radius:8px; padding:20px; width:600px; max-height:80vh; overflow-y:auto; }
+    .modal h2 { font-size:15px; color:#0ff; margin-bottom:16px; }
+    .modal-row { display:flex; gap:12px; margin-bottom:8px; align-items:center; }
+    .modal-row label { color:#888; font-size:12px; width:90px; flex-shrink:0; }
+    .modal-row select, .modal-row input[type="number"] { flex:1; }
+    .modal-preview { display:flex; gap:12px; margin:12px 0; }
+    .modal-preview canvas { border:1px solid #444; image-rendering:pixelated; max-width:260px; max-height:200px; }
+    .modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+    .modal-btns button { padding:8px 20px; font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Teletext Editor</h1>
+    <div class="toolbar" id="modeBar">
+      <button data-mode="text" class="mode-btn active"><span class="key">F1</span>Text</button>
+      <button data-mode="control" class="mode-btn"><span class="key">F2</span>Control</button>
+      <button data-mode="mosaic" class="mode-btn"><span class="key">F3</span>Mosaic</button>
+      <button data-mode="inspect" class="mode-btn"><span class="key">F4</span>Inspect</button>
+    </div>
+    <div class="sep"></div>
+    <div class="toolbar">
+      <button id="btnUndo" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="btnRedo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <div class="sep"></div>
+      <button id="btnReveal" title="Show concealed text (Ctrl+R)">Reveal</button>
+      <button id="btnOverlay" title="Show control code overlay (Ctrl+O)">Overlay</button>
+      <div class="sep"></div>
+      <button id="btnMosaicSep" title="Toggle contiguous/separated mosaic">Contiguous</button>
+      <button id="btnCRT" title="Toggle CRT shader effect">CRT</button>
+    </div>
+    <div class="sep"></div>
+    <div class="toolbar">
+      <button id="btnExport" title="Export current page as .tti file">Export</button>
+      <button id="btnImport" title="Import a .tti file">Import TTI</button>
+      <button id="btnImportT42" title="Import a .t42 broadcast capture">Import T42</button>
+      <button id="btnBitmapImport" title="Import an image as mosaic graphics">Bitmap</button>
+    </div>
+    <div class="toolbar" style="margin-left:auto">
+      <button id="btnHelp" title="Help and keyboard shortcuts" style="font-size:16px;padding:3px 10px">?</button>
+    </div>
+  </header>
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-section"><h3>Pages</h3><ul class="page-list" id="pageList"></ul><div class="sidebar-btns"><button id="btnAddPage">+ Page</button><button id="btnDelPage">- Page</button></div></div>
+      <div class="sidebar-section"><h3>Subpages</h3><div class="subpage-nav"><button id="btnPrevSub">&lt;</button><span id="subpageLabel" style="font-family:monospace">1/1</span><button id="btnNextSub">&gt;</button><button id="btnAddSub">+</button><button id="btnDelSub">-</button></div></div>
+      <div class="sidebar-section"><h3>Page Settings</h3><select id="selLanguage"><option value="english">English</option><option value="german">German</option><option value="swedish_finnish">Swedish/Finnish</option><option value="italian">Italian</option><option value="french">French</option><option value="portuguese_spanish">Portuguese/Spanish</option><option value="czech_slovak">Czech/Slovak</option></select><div style="margin-top:6px"><div class="checkbox-row"><input type="checkbox" id="chkNewsflash"><label for="chkNewsflash">Newsflash</label></div><div class="checkbox-row"><input type="checkbox" id="chkSubtitle"><label for="chkSubtitle">Subtitle</label></div><div class="checkbox-row"><input type="checkbox" id="chkSuppress"><label for="chkSuppress">Suppress header</label></div></div></div>
+      <div class="sidebar-section"><h3>Fastext Links</h3><div class="info-row"><span class="info-label">Red:</span><input type="number" id="flRed" style="width:70px" placeholder="---"></div><div class="info-row"><span class="info-label">Green:</span><input type="number" id="flGreen" style="width:70px" placeholder="---"></div><div class="info-row"><span class="info-label">Yellow:</span><input type="number" id="flYellow" style="width:70px" placeholder="---"></div><div class="info-row"><span class="info-label">Cyan:</span><input type="number" id="flCyan" style="width:70px" placeholder="---"></div></div>
+    </div>
+    <div class="center">
+      <div class="mode-hint" id="modeHint">TEXT MODE — Click to place cursor, then type</div>
+      <canvas id="preview" width="960" height="720"></canvas>
+    </div>
+    <div class="panel-right">
+      <div class="panel-section"><h3>Active Color <span style="color:#555">(keys 1-8)</span></h3><div class="color-palette" id="colorPalette"></div><p style="color:#555;font-size:10px;margin-top:6px">Shift+1-8 inserts mosaic color code</p></div>
+      <div class="panel-section"><h3>Insert Control Code</h3><div class="ctrl-grid" id="ctrlGrid"></div></div>
+      <div class="panel-section"><h3>Cell Inspector</h3><div class="info-row"><span class="info-label">Position:</span><span class="info-value" id="infoPos">0, 0</span></div><div class="info-row"><span class="info-label">Type:</span><span class="info-value" id="infoToken">-</span></div><div class="info-row"><span class="info-label">Value:</span><span class="info-value" id="infoHex">-</span></div><div class="info-row"><span class="info-label">Display:</span><span class="info-value" id="infoChar">-</span></div></div>
+      <div class="panel-section"><h3>Row Bytes</h3><div id="rowBytes"></div></div>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <span>Mode: <span id="modeLabel" class="cell-info">TEXT</span></span>
+    <span>Cursor: <span id="cursorPos" class="cell-info">0,0</span></span>
+    <span>Page: <span id="pageLabel" class="cell-info">-</span></span>
+    <span>Sub: <span id="subLabel" class="cell-info">1/1</span></span>
+    <span>Mosaic: <span id="mosaicMode" class="cell-info">contiguous</span></span>
+    <span class="action-feedback" id="actionFeedback"></span>
+  </div>
+  <div class="help-overlay" id="helpOverlay">
+    <div class="help-content">
+      <h2>Teletext Editor — Quick Start</h2>
+      <p>Create authentic Teletext pages with exact control codes and mosaic graphics.</p>
+      <h3>Modes</h3>
+      <p><strong>Text (F1)</strong> — Click to place cursor, then type. Arrow keys navigate.</p>
+      <p><strong>Control (F2)</strong> — Type text normally, or click the control code grid to insert color changes, flash, double-height, etc.</p>
+      <p><strong>Mosaic (F3)</strong> — <strong>Click and drag</strong> to paint sextant pixels. Each cell is a 2×3 grid. Right-click/drag to erase.</p>
+      <p><strong>Inspect (F4)</strong> — Click cells to see raw byte values.</p>
+      <h3>How Teletext Color Works</h3>
+      <p>Insert a <strong>color control code</strong> into the row. It takes one cell (shows as space) and changes the color for everything after it. <kbd>Shift+1</kbd>-<kbd>8</kbd> inserts mosaic colors.</p>
+      <h3>Shortcuts</h3>
+      <div class="shortcut-row"><span><kbd>F1</kbd>-<kbd>F4</kbd></span><span>Switch mode</span></div>
+      <div class="shortcut-row"><span><kbd>1</kbd>-<kbd>8</kbd></span><span>Select color</span></div>
+      <div class="shortcut-row"><span><kbd>Shift+1</kbd>-<kbd>8</kbd></span><span>Insert mosaic color</span></div>
+      <div class="shortcut-row"><span><kbd>F5</kbd>/<kbd>F6</kbd></span><span>Flash / Steady</span></div>
+      <div class="shortcut-row"><span><kbd>F7</kbd>/<kbd>F8</kbd></span><span>Double height / Normal</span></div>
+      <div class="shortcut-row"><span><kbd>F9</kbd>/<kbd>F10</kbd></span><span>Hold / Release graphics</span></div>
+      <div class="shortcut-row"><span><kbd>F11</kbd>/<kbd>F12</kbd></span><span>New background / Black bg</span></div>
+      <div class="shortcut-row"><span><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd></span><span>Undo / Redo</span></div>
+      <div class="shortcut-row"><span><kbd>Ctrl+C</kbd> / <kbd>V</kbd></span><span>Copy / Paste row</span></div>
+      <div class="shortcut-row"><span><kbd>Ctrl+R</kbd></span><span>Toggle reveal</span></div>
+      <div class="shortcut-row"><span><kbd>Ctrl+O</kbd></span><span>Toggle overlay</span></div>
+      <div style="margin-top:16px;text-align:center"><button onclick="document.getElementById('helpOverlay').classList.remove('open')" style="padding:8px 24px;font-size:14px;background:var(--mode-color);color:#fff;border:none;border-radius:4px;cursor:pointer">Got it — start editing</button></div>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept=".tti" style="display:none">
+  <input type="file" id="fileInputT42" accept=".t42" style="display:none">
+  <input type="file" id="fileBitmap" accept="image/*" style="display:none">
+  <div class="modal-overlay" id="bitmapModal">
+    <div class="modal">
+      <h2>Import Bitmap to Mosaic</h2>
+      <div class="modal-row"><label>Mode:</label><select id="bmpMode"><option value="mono">Monochrome</option><option value="twocolorrow">Two-color (per row)</option><option value="fullcolor" selected>Full color</option></select></div>
+      <div class="modal-row"><label>FG Color:</label><select id="bmpFg"><option value="1">Red</option><option value="2">Green</option><option value="3">Yellow</option><option value="4">Blue</option><option value="5">Magenta</option><option value="6">Cyan</option><option value="7" selected>White</option></select></div>
+      <div class="modal-row"><label>BG Color:</label><select id="bmpBg"><option value="0" selected>Black</option><option value="1">Red</option><option value="2">Green</option><option value="3">Yellow</option><option value="4">Blue</option><option value="5">Magenta</option><option value="6">Cyan</option><option value="7">White</option></select></div>
+      <div class="modal-row"><label>Start row:</label><input type="number" id="bmpStartRow" value="2" min="0" max="23"></div>
+      <div class="modal-row"><label>Start col:</label><input type="number" id="bmpStartCol" value="0" min="0" max="39"></div>
+      <div class="modal-row"><label>Max rows:</label><input type="number" id="bmpMaxRows" value="20" min="1" max="24"></div>
+      <div class="modal-row"><label>Max cols:</label><input type="number" id="bmpMaxCols" value="39" min="1" max="40"></div>
+      <div class="modal-row"><label>Threshold:</label><input type="number" id="bmpThreshold" value="128" min="0" max="255"></div>
+      <div class="modal-row"><label>Mosaic type:</label><select id="bmpMosaicType"><option value="contig">Contiguous</option><option value="separ">Separated</option></select></div>
+      <div class="modal-preview"><div><div style="color:#888;font-size:11px;margin-bottom:4px">Source</div><canvas id="bmpSrcCanvas" width="200" height="150"></canvas></div><div><div style="color:#888;font-size:11px;margin-bottom:4px">Preview</div><canvas id="bmpPreviewCanvas" width="200" height="150"></canvas></div></div>
+      <div class="modal-btns"><button id="bmpCancel">Cancel</button><button id="bmpApply" class="active">Apply to Page</button></div>
+    </div>
+  </div>
+  <script type="module" src="./editor-main.ts"></script>
+</body>
+</html>

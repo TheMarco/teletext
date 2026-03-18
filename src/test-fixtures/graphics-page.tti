@@ -1,0 +1,14 @@
+DE,Graphics Test Page
+PN,20000
+SC,0000
+PS,8000
+OL,0,\x87        GRAPHICS TEST     \x83200
+OL,2,\x87 Contiguous mosaics:
+OL,3,\x92!"/0?
+OL,4,\x87 Separated mosaics:
+OL,5,\x96\x9a!"/0?
+OL,7,\x87 Hold graphics demo:
+OL,8,\x92?\x9e\x91\x93?
+OL,10,\x87 Double height:
+OL,11,\x8d\x87BIG TEXT
+OL,12,

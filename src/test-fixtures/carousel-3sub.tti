@@ -1,0 +1,24 @@
+DE,Weather Forecast
+PN,40000
+SC,0000
+CT,10,T
+PS,8000
+OL,0,\x87        WEATHER           \x83400
+OL,2,\x87 Today: Sunny spells
+OL,3,\x87 High: 22C  Low: 14C
+DE,Weather Forecast
+PN,40001
+SC,0001
+CT,10,T
+PS,8000
+OL,0,\x87        WEATHER           \x83400
+OL,2,\x87 Tomorrow: Cloudy
+OL,3,\x87 High: 18C  Low: 11C
+DE,Weather Forecast
+PN,40002
+SC,0002
+CT,10,T
+PS,8000
+OL,0,\x87        WEATHER           \x83400
+OL,2,\x87 Weekend: Showers
+OL,3,\x87 High: 16C  Low: 10C

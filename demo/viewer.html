@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Created Teletext</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: 'SF Mono', 'Consolas', monospace; }
+    .tv-frame { background: #1a1a1a; border-radius: 12px; padding: 20px; box-shadow: 0 0 60px rgba(0,255,255,0.05); max-height: 100vh; }
+    #screen { image-rendering: pixelated; border: 3px solid #222; display: block; max-height: calc(100vh - 180px); width: auto; }
+    .controls { margin-top: 16px; display: flex; gap: 12px; align-items: center; }
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .numpad button { width: 44px; height: 38px; background: #222; color: #ccc; border: 1px solid #444; border-radius: 4px; font-family: inherit; font-size: 16px; cursor: pointer; }
+    .numpad button:hover { background: #333; }
+    .numpad button:active { background: #0088aa; color: #fff; }
+    .numpad button.wide { grid-column: span 2; width: auto; }
+    .page-input { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
+    .page-display { background: #000; color: #0ff; font-size: 24px; padding: 6px 12px; border: 1px solid #333; border-radius: 4px; min-width: 80px; text-align: center; letter-spacing: 2px; }
+    .fastext-bar { display: flex; gap: 0; margin-top: 4px; }
+    .fastext-btn { flex: 1; height: 28px; border: none; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: bold; color: #fff; }
+    .fastext-btn.red { background: #c00; }
+    .fastext-btn.green { background: #0a0; }
+    .fastext-btn.yellow { background: #aa0; color: #000; }
+    .fastext-btn.cyan { background: #0aa; color: #000; }
+    .info { color: #444; font-size: 11px; margin-top: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="tv-frame">
+    <canvas id="screen" width="960" height="720"></canvas>
+    <div class="fastext-bar">
+      <button class="fastext-btn red" id="ftRed">100</button>
+      <button class="fastext-btn green" id="ftGreen">200</button>
+      <button class="fastext-btn yellow" id="ftYellow">300</button>
+      <button class="fastext-btn cyan" id="ftCyan">400</button>
+    </div>
+    <div class="controls">
+      <div class="numpad">
+        <button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button>
+        <button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button>
+        <button data-n="7">7</button><button data-n="8">8</button><button data-n="9">9</button>
+        <button data-n="back">&#9003;</button><button data-n="0">0</button><button data-n="reveal">R</button>
+      </div>
+      <div class="page-input">
+        <div class="page-display" id="pageDisplay">P100</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button id="btnSubPrev" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:13px" title="Previous subpage (PgUp)">&triangleup;</button>
+          <button id="btnSubNext" style="background:#222;color:#ccc;border:1px solid #444;border-radius:4px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:13px" title="Next subpage (PgDn)">&triangledown;</button>
+        </div>
+        <div id="subDisplay" style="color:#888;font-size:11px;min-width:30px;text-align:center">1/1</div>
+      </div>
+    </div>
+    <div class="info">Type a page number or use the keypad. Arrow up/down or PgUp/PgDn for subpages. R to reveal.</div>
+  </div>
+  <script type="module" src="./viewer-main.ts"></script>
+</body>
+</html>

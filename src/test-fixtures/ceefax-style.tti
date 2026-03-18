@@ -1,0 +1,18 @@
+DE,BBC News Headlines
+PN,10000
+SC,0000
+CT,8,C
+PS,8000
+OL,0,\x87        CEEFAX             \x83100
+OL,1,\x86\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0
+OL,2,
+OL,3,\x87 BBC NEWS HEADLINES
+OL,4,
+OL,5,\x82 Government announces new policy
+OL,6,
+OL,7,\x82 Weather: Rain expected across UK
+OL,8,
+OL,9,\x82 Sport: England win test match
+OL,10,
+OL,23,\x83 News 101  \x86Sport 300  \x85Weather 400
+FL,101,300,400,199,100,8FF

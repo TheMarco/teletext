@@ -1,0 +1,26 @@
+{
+  "name": "teletext",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demo": "vite demo --open /index.html",
+    "editor": "vite demo --open /editor.html",
+    "viewer": "vite demo --open /viewer.html",
+    "golden:generate": "tsx src/__tests__/golden/generate.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^3.2.4"
+  }
+}
