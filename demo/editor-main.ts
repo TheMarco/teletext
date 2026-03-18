@@ -182,9 +182,24 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'fill':
-      // Fill: set the cell's colors
-      cell.fg = activeFg;
-      cell.bg = activeBg;
+      // Flood fill: change all connected cells of the same color
+      const targetFg = cell.fg;
+      const targetBg = cell.bg;
+      if (targetFg === activeFg && targetBg === activeBg) break; // already the right color
+      const visited = new Set<string>();
+      const stack: [number, number][] = [[row, col]];
+      while (stack.length > 0) {
+        const [r, c] = stack.pop()!;
+        const key = `${r},${c}`;
+        if (visited.has(key)) continue;
+        if (r < 0 || r >= 24 || c < 0 || c >= 40) continue;
+        const t = grid[r][c];
+        if (t.fg !== targetFg || t.bg !== targetBg) continue;
+        visited.add(key);
+        t.fg = activeFg;
+        t.bg = activeBg;
+        stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
+      }
       break;
 
     case 'erase':
@@ -885,6 +900,24 @@ function compileAndRender() {
     const row: TeletextRow = { index: r, tokens: isBottomHalf ? [{ kind: 'fill' as const, count: 40, codepoint7: 0x20 }] : result.tokens };
     const compiled = compileRow(row);
     rawRows.push(Array.from(compiled.bytes40));
+  }
+
+  // Inject fastext bar on row 23 if any links are set
+  const ft = pages[activePageIdx].fastext;
+  if (ft.some(f => f)) {
+    const ftRow = new Array(40).fill(0x20);
+    const colors = [0x01, 0x02, 0x03, 0x06]; // red, green, yellow, cyan
+    let col = 0;
+    for (let i = 0; i < 4; i++) {
+      if (col >= 40) break;
+      ftRow[col++] = colors[i]; // color control code
+      const label = ft[i].padEnd(9).substring(0, 9);
+      for (const ch of label) {
+        if (col >= 40) break;
+        ftRow[col++] = ch.charCodeAt(0);
+      }
+    }
+    rawRows[23] = ftRow;
   }
 
   const pageGrid = processPage(rawRows);
