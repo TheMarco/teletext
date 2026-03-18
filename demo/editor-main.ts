@@ -405,20 +405,8 @@ document.addEventListener('keydown', (e) => {
       updateCursorDisplay();
       return;
     }
-    // Printable character — including numbers, letters, symbols, space
-    if (e.key.length === 1 && !e.shiftKey) {
-      const code = e.key.charCodeAt(0);
-      if (code >= 0x20 && code <= 0x7E) {
-        e.preventDefault();
-        ensureTypingUndo(); resetTypingBatch();
-        grid[cursorRow][cursorCol] = { char: code, fg: activeFg, bg: activeBg, mosaic: false, contiguous: true };
-        cursorCol = Math.min(39, cursorCol + 1);
-        updateCursorDisplay();
-        return;
-      }
-    }
-    // Shift+letter = uppercase (e.key already reflects this)
-    if (e.key.length === 1 && e.shiftKey) {
+    // Printable character — e.key already reflects shift state
+    if (e.key.length === 1) {
       const code = e.key.charCodeAt(0);
       if (code >= 0x20 && code <= 0x7E) {
         e.preventDefault();

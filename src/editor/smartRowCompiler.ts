@@ -112,7 +112,9 @@ export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = fals
     }
   }
 
-  // Apply transitions: place control codes in preceding slots.
+  // Apply transitions: place control codes ONLY in slots that contain spaces.
+  // Never overwrite user content. If no space is available, skip the transition
+  // (the color won't change but no content is destroyed).
   const state2 = defaultState();
   for (let i = 0; i < 40; i++) {
     const cell = visual[i];
@@ -121,27 +123,40 @@ export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = fals
       const codes = transitionCodes(s, cell);
 
       if (codes.length > 0) {
-        // Try to place codes at (i - codes.length) through (i - 1)
-        const startPos = i - codes.length;
-
-        if (startPos >= 0) {
-          // Normal case: enough room before the cell
-          for (let j = 0; j < codes.length; j++) {
-            slotContent[startPos + j] = { type: 'control', code: codes[j] };
-          }
-        } else {
-          // Not enough room before — place codes starting at position 0
-          // and shift the target cell rightward
-          for (let j = 0; j < codes.length && j < 40; j++) {
-            slotContent[j] = { type: 'control', code: codes[j] };
-          }
-          // The cell that needed the transition gets pushed to after the codes
-          if (codes.length < 40) {
-            slotContent[codes.length] = { type: 'cell', idx: i };
+        // Find space cells before position i to place codes into
+        // Search backwards from i-1 for empty slots
+        const availableSlots: number[] = [];
+        for (let j = i - 1; j >= 0 && availableSlots.length < codes.length; j--) {
+          const slot = slotContent[j];
+          if (slot.type === 'cell') {
+            const c = visual[slot.idx];
+            // Only use genuinely empty cells (space, not mosaic, same bg as default or same bg)
+            if (c.char === 0x20 && !c.mosaic) {
+              availableSlots.unshift(j); // prepend to keep order
+            } else {
+              break; // stop at first non-space — don't jump over content
+            }
+          } else {
+            break; // stop at existing control code
           }
         }
+
+        if (availableSlots.length >= codes.length) {
+          // Place codes in the available space slots
+          for (let j = 0; j < codes.length; j++) {
+            slotContent[availableSlots[j]] = { type: 'control', code: codes[j] };
+          }
+          Object.assign(state2, s);
+        } else if (i === 0 || (i === 1 && doubleHeight)) {
+          // Edge case: transition at start of row with no preceding spaces
+          // Use the cell's own slot for the first code (cell content sacrificed)
+          // This only happens for the very first non-default cell
+          slotContent[doubleHeight ? 1 : 0] = { type: 'control', code: codes[codes.length - 1] };
+          Object.assign(state2, s);
+        }
+        // else: not enough space — skip transition, colors won't be perfect
+        // but no user content is destroyed
       }
-      Object.assign(state2, s);
     }
   }
 
