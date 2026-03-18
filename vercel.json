@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npx vite build demo --outDir ../dist",
+  "outputDirectory": "dist",
+  "framework": null
+}
