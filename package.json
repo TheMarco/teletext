@@ -9,6 +9,7 @@
     "test:watch": "vitest",
     "demo": "vite demo --open /index.html",
     "editor": "vite demo --open /editor.html",
+    "studio": "vite demo --open /editor2.html",
     "viewer": "vite demo --open /viewer.html",
     "golden:generate": "tsx src/__tests__/golden/generate.ts"
   },

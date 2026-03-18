@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teletext Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; color: #ddd; font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
+
+    /* Top toolbar */
+    .topbar { background: #1a1a1a; padding: 8px 16px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #333; }
+    .topbar h1 { font-size: 15px; color: #0ff; font-weight: 600; }
+    .topbar .tool-group { display: flex; gap: 4px; align-items: center; }
+    .topbar button { background: #2a2a2a; color: #bbb; border: 1px solid #444; padding: 6px 14px; cursor: pointer; font-size: 12px; border-radius: 4px; }
+    .topbar button:hover { background: #3a3a3a; color: #fff; }
+    .topbar button.active { background: #0088aa; color: #fff; border-color: #0aa; }
+    .topbar .sep { width: 1px; height: 28px; background: #333; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* Left: tools panel */
+    .tools-panel { width: 220px; background: #1a1a1a; border-right: 1px solid #333; padding: 12px; overflow-y: auto; }
+    .tools-panel h3 { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 8px; }
+    .tools-panel h3:first-child { margin-top: 0; }
+
+    /* Tool buttons */
+    .tool-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: #222; border: 1px solid #333; border-radius: 4px; color: #ccc; cursor: pointer; font-size: 12px; margin-bottom: 4px; }
+    .tool-btn:hover { background: #2a2a2a; }
+    .tool-btn.active { background: #0088aa; color: #fff; border-color: #0aa; }
+    .tool-icon { font-size: 16px; width: 24px; text-align: center; }
+
+    /* Color picker */
+    .color-grid { display: flex; gap: 4px; flex-wrap: wrap; }
+    .color-cell { width: 32px; height: 32px; border: 2px solid #333; border-radius: 4px; cursor: pointer; transition: all 0.1s; }
+    .color-cell:hover { transform: scale(1.1); }
+    .color-cell.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+    .fg-bg-toggle { display: flex; gap: 8px; margin-bottom: 8px; }
+    .fg-bg-toggle button { flex: 1; padding: 6px; font-size: 11px; }
+    .color-preview { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .color-swatch-preview { width: 40px; height: 30px; border: 1px solid #555; border-radius: 3px; }
+    .color-label { font-size: 11px; color: #888; }
+
+    /* Glyph picker */
+    .glyph-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-height: 200px; overflow-y: auto; }
+    .glyph-cell { aspect-ratio: 1; background: #222; border: 1px solid #333; border-radius: 2px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: 'SF Mono', monospace; font-size: 14px; color: #ccc; }
+    .glyph-cell:hover { background: #3a3a3a; border-color: #0aa; }
+    .glyph-cell.active { background: #0088aa; color: #fff; }
+
+    /* Mosaic picker */
+    .mosaic-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+    .mosaic-cell { aspect-ratio: 0.67; background: #222; border: 1px solid #333; border-radius: 2px; cursor: pointer; position: relative; }
+    .mosaic-cell:hover { border-color: #0aa; }
+    .mosaic-cell canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+
+    /* Canvas area */
+    .canvas-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0a; position: relative; }
+    #canvas { image-rendering: pixelated; cursor: crosshair; border: 2px solid #333; max-width: 100%; max-height: calc(100vh - 60px); object-fit: contain; }
+
+    /* Right: pages */
+    .pages-panel { width: 180px; background: #1a1a1a; border-left: 1px solid #333; padding: 12px; overflow-y: auto; }
+    .pages-panel h3 { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px; }
+    .page-list { list-style: none; }
+    .page-list li { padding: 4px 8px; cursor: pointer; border-radius: 3px; font-family: monospace; font-size: 12px; margin-bottom: 2px; }
+    .page-list li:hover { background: #2a2a2a; }
+    .page-list li.active { background: #0088aa; color: #fff; }
+    .pages-panel button { width: 100%; margin-top: 6px; padding: 6px; background: #2a2a2a; color: #bbb; border: 1px solid #444; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .pages-panel button:hover { background: #3a3a3a; }
+
+    /* Bottom bar */
+    .bottombar { background: #1a1a1a; border-top: 1px solid #333; padding: 6px 16px; font-size: 12px; display: flex; gap: 24px; }
+    .bottombar span { color: #888; }
+    .bottombar .val { color: #0ff; font-family: monospace; font-weight: 600; }
+    .bottombar .feedback { margin-left: auto; color: #666; font-style: italic; }
+
+    /* Hidden */
+    input[type="file"] { display: none; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Teletext Studio</h1>
+    <div class="sep"></div>
+    <div class="tool-group">
+      <button id="btnUndo" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="btnRedo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    </div>
+    <div class="sep"></div>
+    <div class="tool-group">
+      <button id="btnCRT">CRT</button>
+      <button id="btnExport">Export TTI</button>
+      <button id="btnImportTTI">Import TTI</button>
+      <button id="btnImportT42">Import T42</button>
+      <button id="btnImportBitmap">Import Image</button>
+    </div>
+    <div class="tool-group" style="margin-left:auto">
+      <button id="btnHelp" style="font-size:16px;padding:4px 10px">?</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tools-panel">
+      <h3>Tools</h3>
+      <div class="tool-btn active" data-tool="text"><span class="tool-icon">A</span>Text</div>
+      <div class="tool-btn" data-tool="paint"><span class="tool-icon">&#9608;</span>Paint Mosaic</div>
+      <div class="tool-btn" data-tool="fill"><span class="tool-icon">&#9619;</span>Fill Color</div>
+      <div class="tool-btn" data-tool="erase"><span class="tool-icon">&#9003;</span>Eraser</div>
+      <div class="tool-btn" data-tool="picker"><span class="tool-icon">&#128065;</span>Pick Color</div>
+
+      <h3>Foreground Color</h3>
+      <div class="color-grid" id="fgColors"></div>
+
+      <h3>Background Color</h3>
+      <div class="color-grid" id="bgColors"></div>
+
+      <h3>Characters</h3>
+      <div class="glyph-grid" id="glyphGrid"></div>
+
+      <h3>Mosaic Blocks</h3>
+      <div class="mosaic-grid" id="mosaicGrid"></div>
+    </div>
+
+    <div class="canvas-area">
+      <canvas id="canvas" width="960" height="720"></canvas>
+    </div>
+
+    <div class="pages-panel">
+      <h3>Pages</h3>
+      <ul class="page-list" id="pageList"></ul>
+      <button id="btnAddPage">+ New Page</button>
+      <button id="btnDelPage">- Delete Page</button>
+      <h3 style="margin-top:12px">Subpages</h3>
+      <div style="display:flex;gap:4px;align-items:center">
+        <button id="btnPrevSub" style="width:auto;padding:4px 8px">&lt;</button>
+        <span id="subLabel" style="font-family:monospace;flex:1;text-align:center">1/1</span>
+        <button id="btnNextSub" style="width:auto;padding:4px 8px">&gt;</button>
+        <button id="btnAddSub" style="width:auto;padding:4px 8px">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottombar">
+    <span>Tool: <span class="val" id="toolLabel">Text</span></span>
+    <span>Cursor: <span class="val" id="cursorLabel">0, 0</span></span>
+    <span>Page: <span class="val" id="pageLabel">P100</span></span>
+    <span>FG: <span class="val" id="fgLabel">White</span></span>
+    <span>BG: <span class="val" id="bgLabel">Black</span></span>
+    <span class="feedback" id="feedback"></span>
+  </div>
+
+  <input type="file" id="fileTTI" accept=".tti">
+  <input type="file" id="fileT42" accept=".t42">
+  <input type="file" id="fileBitmap" accept="image/*">
+
+  <script type="module" src="./editor2-main.ts"></script>
+</body>
+</html>
