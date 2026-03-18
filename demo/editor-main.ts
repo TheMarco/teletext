@@ -553,8 +553,6 @@ document.getElementById('bmpApply')!.onclick = () => {
   bmpImage = null;
   showFeedback(`Imported as ${cellCols}×${cellRows} mosaic`);
 };
-  img.src = URL.createObjectURL(file);
-};
 
 // ─── Render ─────────────────────────────────────────────────────
 
