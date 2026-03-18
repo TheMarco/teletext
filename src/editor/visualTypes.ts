@@ -14,20 +14,36 @@ export interface VisualCell {
 
 export type VisualRow = VisualCell[];
 
+/** Per-row metadata */
+export interface RowMeta {
+  doubleHeight: boolean;
+}
+
 export function defaultVisualCell(): VisualCell {
   return { char: 0x20, fg: 7, bg: 0, mosaic: false, contiguous: true };
 }
 
-export function createVisualGrid(): VisualRow[] {
-  const grid: VisualRow[] = [];
+export function defaultRowMeta(): RowMeta {
+  return { doubleHeight: false };
+}
+
+export interface VisualGrid {
+  rows: VisualRow[];
+  rowMeta: RowMeta[];
+}
+
+export function createVisualGrid(): VisualGrid {
+  const rows: VisualRow[] = [];
+  const rowMeta: RowMeta[] = [];
   for (let r = 0; r < 24; r++) {
     const row: VisualRow = [];
     for (let c = 0; c < 40; c++) {
       row.push(defaultVisualCell());
     }
-    grid.push(row);
+    rows.push(row);
+    rowMeta.push(defaultRowMeta());
   }
-  return grid;
+  return { rows, rowMeta };
 }
 
 /**

@@ -12,6 +12,7 @@ import type { VisualRow, VisualCell, VisualCompileResult } from './visualTypes.j
 
 const ALPHA_BASE = 0x00;
 const MOSAIC_BASE = 0x10;
+const DOUBLE_HEIGHT = 0x0D;
 const BLACK_BG = 0x1C;
 const NEW_BG = 0x1D;
 const CONTIGUOUS = 0x19;
@@ -81,7 +82,7 @@ function needsTransition(state: RowState, cell: VisualCell): boolean {
          (cell.mosaic && state.contiguous !== cell.contiguous);
 }
 
-export function compileVisualRow(visual: VisualRow): VisualCompileResult {
+export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = false): VisualCompileResult {
   // Phase 1: figure out where transitions happen and how many codes each needs
   const state1 = defaultState();
   const transitionsNeeded: number[] = new Array(40).fill(0); // codes needed before cell i
@@ -97,16 +98,21 @@ export function compileVisualRow(visual: VisualRow): VisualCompileResult {
   }
 
   // Phase 2: build the 40-token output
-  // For each transition at cell i that needs N codes, place N control codes
-  // at positions (i-N) through (i-1). Mark those slots.
   const slotContent: Array<{ type: 'control'; code: number } | { type: 'cell'; idx: number }> = [];
-  for (let i = 0; i < 40; i++) {
-    slotContent.push({ type: 'cell', idx: i });
+
+  // If double-height, insert the control code at slot 0
+  if (doubleHeight) {
+    slotContent.push({ type: 'control', code: DOUBLE_HEIGHT });
+    for (let i = 1; i < 40; i++) {
+      slotContent.push({ type: 'cell', idx: i });
+    }
+  } else {
+    for (let i = 0; i < 40; i++) {
+      slotContent.push({ type: 'cell', idx: i });
+    }
   }
 
   // Apply transitions: place control codes in preceding slots.
-  // If there's no room before the cell (e.g., cell 0), use the cell's own
-  // slot and subsequent slots for the codes, pushing content right.
   const state2 = defaultState();
   for (let i = 0; i < 40; i++) {
     const cell = visual[i];

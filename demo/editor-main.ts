@@ -4,7 +4,7 @@
  * The editor auto-manages control codes under the hood.
  */
 
-import { createVisualGrid, defaultVisualCell, type VisualCell, type VisualRow } from '../src/editor/visualTypes.js';
+import { createVisualGrid, defaultVisualCell, defaultRowMeta, type VisualCell, type VisualRow, type VisualGrid, type RowMeta } from '../src/editor/visualTypes.js';
 import { compileVisualRow, decompileToVisualRow } from '../src/editor/smartRowCompiler.js';
 import { processPage } from '../src/state-machine/state-machine.js';
 import { renderToBuffer, BUFFER_WIDTH, BUFFER_HEIGHT } from '../src/render-buffer/render-buffer.js';
@@ -18,7 +18,9 @@ import type { TeletextRow } from '../src/model/types.js';
 
 // ─── State ──────────────────────────────────────────────────────
 
-let grid = createVisualGrid();
+let vgrid = createVisualGrid();
+let grid = vgrid.rows; // alias for convenience
+let rowMeta = vgrid.rowMeta;
 let cursorRow = 0, cursorCol = 0;
 let activeTool: 'text' | 'paint' | 'fill' | 'erase' | 'picker' | 'select' = 'text';
 
@@ -460,11 +462,30 @@ document.getElementById('btnCRT')!.onclick = (e) => {
   else { crtOverlay = createCRTOverlay(canvas); (e.target as HTMLElement).classList.add('active'); }
 };
 
+// ─── Double Height ──────────────────────────────────────────────
+
+document.getElementById('btnDoubleHeight')!.onclick = () => {
+  pushUndo();
+  rowMeta[cursorRow].doubleHeight = !rowMeta[cursorRow].doubleHeight;
+  const btn = document.getElementById('btnDoubleHeight')!;
+  if (rowMeta[cursorRow].doubleHeight) {
+    btn.classList.add('active');
+    // The row below becomes the bottom half — clear it
+    if (cursorRow < 23) {
+      rowMeta[cursorRow + 1].doubleHeight = false;
+    }
+    showFeedback(`Row ${cursorRow}: double height ON`);
+  } else {
+    btn.classList.remove('active');
+    showFeedback(`Row ${cursorRow}: double height OFF`);
+  }
+};
+
 // ─── Pages / Subpages ───────────────────────────────────────────
 
 // Multi-page support: store pages as an array of grids
-let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; activeSubpage: number }[] = [
-  { grid, id: 0x100, subgrids: [grid], activeSubpage: 0 },
+let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; subMetas: RowMeta[][]; activeSubpage: number }[] = [
+  { grid, id: 0x100, subgrids: [grid], subMetas: [rowMeta], activeSubpage: 0 },
 ];
 let activePageIdx = 0;
 
@@ -531,6 +552,7 @@ function switchToPage(idx: number) {
   activePageIdx = idx;
   const p = pages[idx];
   grid = p.subgrids[p.activeSubpage];
+  rowMeta = p.subMetas[p.activeSubpage] ?? Array.from({length:24}, () => defaultRowMeta());
   p.grid = grid;
   updatePageList();
   updateSubLabel();
@@ -545,6 +567,7 @@ function nextPageId(): number {
 function saveCurrentPage() {
   pages[activePageIdx].grid = grid;
   pages[activePageIdx].subgrids[pages[activePageIdx].activeSubpage] = grid;
+  pages[activePageIdx].subMetas[pages[activePageIdx].activeSubpage] = rowMeta;
 }
 
 // ─── Page: Insert Before ────────────────────────────────────────
@@ -553,9 +576,9 @@ document.getElementById('btnInsertBefore')!.onclick = () => {
   const newId = promptPageNumber(suggest);
   if (newId === null) return;
   saveCurrentPage();
-  const newGrid = createVisualGrid();
-  pages.splice(activePageIdx, 0, { grid: newGrid, id: newId, subgrids: [newGrid], activeSubpage: 0 });
-  grid = newGrid;
+  const vg = createVisualGrid();
+  pages.splice(activePageIdx, 0, { grid: vg.rows, id: newId, subgrids: [vg.rows], subMetas: [vg.rowMeta], activeSubpage: 0 });
+  grid = vg.rows; rowMeta = vg.rowMeta;
   updatePageList();
   showFeedback(`Inserted ${formatPn(newId)}`);
 };
@@ -566,10 +589,10 @@ document.getElementById('btnInsertAfter')!.onclick = () => {
   const newId = promptPageNumber(Math.min(0x8FF, suggest));
   if (newId === null) return;
   saveCurrentPage();
-  const newGrid = createVisualGrid();
-  pages.splice(activePageIdx + 1, 0, { grid: newGrid, id: newId, subgrids: [newGrid], activeSubpage: 0 });
+  const vg = createVisualGrid();
+  pages.splice(activePageIdx + 1, 0, { grid: vg.rows, id: newId, subgrids: [vg.rows], subMetas: [vg.rowMeta], activeSubpage: 0 });
   activePageIdx++;
-  grid = newGrid;
+  grid = vg.rows; rowMeta = vg.rowMeta;
   updatePageList();
   showFeedback(`Inserted ${formatPn(newId)}`);
 };
@@ -581,8 +604,10 @@ document.getElementById('btnDupPage')!.onclick = () => {
   if (newId === null) return;
   saveCurrentPage();
   const dupGrid = JSON.parse(JSON.stringify(grid)) as VisualRow[];
+  const dupMeta = JSON.parse(JSON.stringify(rowMeta)) as RowMeta[];
   const dupSubgrids = pages[activePageIdx].subgrids.map((sg: VisualRow[]) => JSON.parse(JSON.stringify(sg)));
-  pages.splice(activePageIdx + 1, 0, { grid: dupGrid, id: newId, subgrids: dupSubgrids, activeSubpage: 0 });
+  const dupSubMetas = pages[activePageIdx].subMetas.map((sm: RowMeta[]) => JSON.parse(JSON.stringify(sm)));
+  pages.splice(activePageIdx + 1, 0, { grid: dupGrid, id: newId, subgrids: dupSubgrids, subMetas: dupSubMetas, activeSubpage: 0 });
   activePageIdx++;
   grid = dupGrid;
   updatePageList();
@@ -614,6 +639,7 @@ document.getElementById('btnPrevSub')!.onclick = () => {
   saveCurrentPage();
   p.activeSubpage--;
   grid = p.subgrids[p.activeSubpage];
+  rowMeta = p.subMetas[p.activeSubpage] ?? Array.from({length:24}, () => defaultRowMeta());
   p.grid = grid;
   updateSubLabel();
   showFeedback(`Subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
@@ -625,6 +651,7 @@ document.getElementById('btnNextSub')!.onclick = () => {
   saveCurrentPage();
   p.activeSubpage++;
   grid = p.subgrids[p.activeSubpage];
+  rowMeta = p.subMetas[p.activeSubpage] ?? Array.from({length:24}, () => defaultRowMeta());
   p.grid = grid;
   updateSubLabel();
   showFeedback(`Subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
@@ -633,10 +660,11 @@ document.getElementById('btnNextSub')!.onclick = () => {
 document.getElementById('btnAddSub')!.onclick = () => {
   const p = pages[activePageIdx];
   saveCurrentPage();
-  const newSub = createVisualGrid();
-  p.subgrids.splice(p.activeSubpage + 1, 0, newSub);
+  const vg = createVisualGrid();
+  p.subgrids.splice(p.activeSubpage + 1, 0, vg.rows);
+  p.subMetas.splice(p.activeSubpage + 1, 0, vg.rowMeta);
   p.activeSubpage++;
-  grid = newSub;
+  grid = vg.rows; rowMeta = vg.rowMeta;
   p.grid = grid;
   updateSubLabel();
   showFeedback(`Added subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
@@ -738,15 +766,32 @@ document.getElementById('btnImportT42')!.onclick = () => (document.getElementByI
   (this as HTMLInputElement).value = '';
   file.arrayBuffer().then(buf => {
     const result = importT42(new Uint8Array(buf));
-    if (result.pages.length > 0) {
-      const sp = result.pages[0].subpages[0];
-      pushUndo();
-      for (let r = 0; r < 24; r++) {
-        const compiled = compileRow(sp.rows[r]);
-        grid[r] = decompileToVisualRow(Array.from(compiled.bytes40));
+    if (result.pages.length === 0) { showFeedback('No pages found'); return; }
+    pushUndo();
+
+    // Import ALL pages from the T42 file
+    pages = result.pages.map(p => {
+      const subgrids: VisualRow[][] = [];
+      const subMetas: RowMeta[][] = [];
+      for (const sp of p.subpages) {
+        const vRows: VisualRow[] = [];
+        const meta: RowMeta[] = [];
+        for (let r = 0; r < 24; r++) {
+          const compiled = compileRow(sp.rows[r]);
+          vRows.push(decompileToVisualRow(Array.from(compiled.bytes40)));
+          meta.push(defaultRowMeta());
+        }
+        subgrids.push(vRows);
+        subMetas.push(meta);
       }
-      showFeedback(`Imported ${result.pages.length} page(s) from T42`);
-    }
+      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0 };
+    });
+    activePageIdx = 0;
+    grid = pages[0].subgrids[0];
+    rowMeta = pages[0].subMetas[0];
+    updatePageList();
+    updateSubLabel();
+    showFeedback(`Imported ${result.pages.length} page(s) from T42`);
   });
 };
 
@@ -828,8 +873,10 @@ function compileAndRender() {
   // Compile each visual row into tokens, then into raw bytes
   const rawRows: number[][] = [];
   for (let r = 0; r < 24; r++) {
-    const result = compileVisualRow(grid[r]);
-    const row: TeletextRow = { index: r, tokens: result.tokens };
+    // Skip rows that are bottom halves of double-height (they're auto-generated by renderer)
+    const isBottomHalf = r > 0 && rowMeta[r - 1].doubleHeight;
+    const result = compileVisualRow(grid[r], rowMeta[r].doubleHeight);
+    const row: TeletextRow = { index: r, tokens: isBottomHalf ? [{ kind: 'fill' as const, count: 40, codepoint7: 0x20 }] : result.tokens };
     const compiled = compileRow(row);
     rawRows.push(Array.from(compiled.bytes40));
   }
