@@ -468,17 +468,62 @@ let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; activeSubpa
 ];
 let activePageIdx = 0;
 
+function formatPn(id: number): string {
+  return 'P' + id.toString(16).toUpperCase().padStart(3, '0');
+}
+
 function updatePageList() {
+  // Sort pages by id
+  const sortedIndices = pages.map((_, i) => i).sort((a, b) => pages[a].id - pages[b].id);
+
   const list = document.getElementById('pageList')!;
   list.innerHTML = '';
-  pages.forEach((p, i) => {
+  sortedIndices.forEach(i => {
+    const p = pages[i];
     const li = document.createElement('li');
-    li.textContent = 'P' + p.id.toString(16).toUpperCase().padStart(3, '0');
+    li.textContent = formatPn(p.id);
     if (i === activePageIdx) li.classList.add('active');
+
+    // Single click: switch to page
     li.onclick = () => { switchToPage(i); };
+
+    // Double click: rename page number
+    li.ondblclick = (e) => {
+      e.stopPropagation();
+      const input = prompt(`Rename ${formatPn(p.id)} to (hex, e.g. 100-8FF):`, p.id.toString(16).toUpperCase());
+      if (!input) return;
+      const newId = parseInt(input, 16);
+      if (isNaN(newId) || newId < 0x100 || newId > 0x8FF) {
+        alert('Invalid page number. Must be 100-8FF (hex).');
+        return;
+      }
+      if (pages.some((other, idx) => idx !== i && other.id === newId)) {
+        alert(`Page ${formatPn(newId)} already exists.`);
+        return;
+      }
+      p.id = newId;
+      updatePageList();
+      showFeedback(`Renamed to ${formatPn(newId)}`);
+    };
+
     list.appendChild(li);
   });
-  (document.getElementById('pageLabel') as HTMLElement).textContent = 'P' + pages[activePageIdx].id.toString(16).toUpperCase().padStart(3, '0');
+  (document.getElementById('pageLabel') as HTMLElement).textContent = formatPn(pages[activePageIdx].id);
+}
+
+function promptPageNumber(defaultId: number): number | null {
+  const input = prompt(`Page number (hex, 100-8FF):`, defaultId.toString(16).toUpperCase());
+  if (!input) return null;
+  const id = parseInt(input, 16);
+  if (isNaN(id) || id < 0x100 || id > 0x8FF) {
+    alert('Invalid page number. Must be 100-8FF (hex).');
+    return null;
+  }
+  if (pages.some(p => p.id === id)) {
+    alert(`Page ${formatPn(id)} already exists.`);
+    return null;
+  }
+  return id;
 }
 
 function switchToPage(idx: number) {
@@ -504,39 +549,44 @@ function saveCurrentPage() {
 
 // ─── Page: Insert Before ────────────────────────────────────────
 document.getElementById('btnInsertBefore')!.onclick = () => {
+  const suggest = Math.max(0x100, pages[activePageIdx].id - 1);
+  const newId = promptPageNumber(suggest);
+  if (newId === null) return;
   saveCurrentPage();
-  const newId = nextPageId();
-  const newPage = { grid: createVisualGrid(), id: newId, subgrids: [createVisualGrid()], activeSubpage: 0 };
-  pages.splice(activePageIdx, 0, newPage);
-  grid = newPage.grid;
+  const newGrid = createVisualGrid();
+  pages.splice(activePageIdx, 0, { grid: newGrid, id: newId, subgrids: [newGrid], activeSubpage: 0 });
+  grid = newGrid;
   updatePageList();
-  showFeedback(`Inserted P${newId.toString(16).toUpperCase()} before`);
+  showFeedback(`Inserted ${formatPn(newId)}`);
 };
 
 // ─── Page: Insert After ─────────────────────────────────────────
 document.getElementById('btnInsertAfter')!.onclick = () => {
+  const suggest = pages[activePageIdx].id + 1;
+  const newId = promptPageNumber(Math.min(0x8FF, suggest));
+  if (newId === null) return;
   saveCurrentPage();
-  const newId = nextPageId();
-  const newPage = { grid: createVisualGrid(), id: newId, subgrids: [createVisualGrid()], activeSubpage: 0 };
-  pages.splice(activePageIdx + 1, 0, newPage);
+  const newGrid = createVisualGrid();
+  pages.splice(activePageIdx + 1, 0, { grid: newGrid, id: newId, subgrids: [newGrid], activeSubpage: 0 });
   activePageIdx++;
-  grid = newPage.grid;
+  grid = newGrid;
   updatePageList();
-  showFeedback(`Inserted P${newId.toString(16).toUpperCase()} after`);
+  showFeedback(`Inserted ${formatPn(newId)}`);
 };
 
 // ─── Page: Duplicate ────────────────────────────────────────────
 document.getElementById('btnDupPage')!.onclick = () => {
+  const suggest = pages[activePageIdx].id + 1;
+  const newId = promptPageNumber(Math.min(0x8FF, suggest));
+  if (newId === null) return;
   saveCurrentPage();
-  const newId = nextPageId();
   const dupGrid = JSON.parse(JSON.stringify(grid)) as VisualRow[];
   const dupSubgrids = pages[activePageIdx].subgrids.map((sg: VisualRow[]) => JSON.parse(JSON.stringify(sg)));
-  const newPage = { grid: dupGrid, id: newId, subgrids: dupSubgrids, activeSubpage: 0 };
-  pages.splice(activePageIdx + 1, 0, newPage);
+  pages.splice(activePageIdx + 1, 0, { grid: dupGrid, id: newId, subgrids: dupSubgrids, activeSubpage: 0 });
   activePageIdx++;
   grid = dupGrid;
   updatePageList();
-  showFeedback(`Duplicated as P${newId.toString(16).toUpperCase()}`);
+  showFeedback(`Duplicated as ${formatPn(newId)}`);
 };
 
 // ─── Page: Delete ───────────────────────────────────────────────
