@@ -122,14 +122,24 @@
     <div class="pages-panel">
       <h3>Pages</h3>
       <ul class="page-list" id="pageList"></ul>
-      <button id="btnAddPage">+ New Page</button>
-      <button id="btnDelPage">- Delete Page</button>
+      <div style="display:flex;gap:4px;margin-top:6px">
+        <button id="btnInsertBefore" title="Insert page before current" style="flex:1">+ Before</button>
+        <button id="btnInsertAfter" title="Insert page after current" style="flex:1">+ After</button>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button id="btnDupPage" title="Duplicate current page" style="flex:1">Duplicate</button>
+        <button id="btnDelPage" title="Delete current page" style="flex:1">Delete</button>
+      </div>
       <h3 style="margin-top:12px">Subpages</h3>
       <div style="display:flex;gap:4px;align-items:center">
         <button id="btnPrevSub" style="width:auto;padding:4px 8px">&lt;</button>
         <span id="subLabel" style="font-family:monospace;flex:1;text-align:center">1/1</span>
         <button id="btnNextSub" style="width:auto;padding:4px 8px">&gt;</button>
-        <button id="btnAddSub" style="width:auto;padding:4px 8px">+</button>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button id="btnAddSub" title="Add subpage after current" style="flex:1">+ Sub</button>
+        <button id="btnDupSub" title="Duplicate current subpage" style="flex:1">Dup Sub</button>
+        <button id="btnDelSub" title="Delete current subpage" style="flex:1">- Sub</button>
       </div>
     </div>
   </div>

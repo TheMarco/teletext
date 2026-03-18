@@ -463,7 +463,9 @@ document.getElementById('btnCRT')!.onclick = (e) => {
 // ─── Pages / Subpages ───────────────────────────────────────────
 
 // Multi-page support: store pages as an array of grids
-let pages: { grid: VisualRow[]; id: number }[] = [{ grid, id: 0x100 }];
+let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; activeSubpage: number }[] = [
+  { grid, id: 0x100, subgrids: [grid], activeSubpage: 0 },
+];
 let activePageIdx = 0;
 
 function updatePageList() {
@@ -480,39 +482,139 @@ function updatePageList() {
 }
 
 function switchToPage(idx: number) {
-  pages[activePageIdx].grid = grid;
+  saveCurrentPage();
   activePageIdx = idx;
-  grid = pages[idx].grid;
+  const p = pages[idx];
+  grid = p.subgrids[p.activeSubpage];
+  p.grid = grid;
   updatePageList();
-  showFeedback(`Switched to P${pages[idx].id.toString(16).toUpperCase()}`);
+  updateSubLabel();
+  showFeedback(`Switched to P${p.id.toString(16).toUpperCase()}`);
 }
 
-document.getElementById('btnAddPage')!.onclick = () => {
+function nextPageId(): number {
   const maxId = Math.max(...pages.map(p => p.id));
-  const newId = maxId + 1;
+  return maxId + 1;
+}
+
+function saveCurrentPage() {
   pages[activePageIdx].grid = grid;
-  const newGrid = createVisualGrid();
-  pages.push({ grid: newGrid, id: newId });
-  activePageIdx = pages.length - 1;
-  grid = newGrid;
+  pages[activePageIdx].subgrids[pages[activePageIdx].activeSubpage] = grid;
+}
+
+// ─── Page: Insert Before ────────────────────────────────────────
+document.getElementById('btnInsertBefore')!.onclick = () => {
+  saveCurrentPage();
+  const newId = nextPageId();
+  const newPage = { grid: createVisualGrid(), id: newId, subgrids: [createVisualGrid()], activeSubpage: 0 };
+  pages.splice(activePageIdx, 0, newPage);
+  grid = newPage.grid;
   updatePageList();
-  showFeedback(`Added P${newId.toString(16).toUpperCase()}`);
+  showFeedback(`Inserted P${newId.toString(16).toUpperCase()} before`);
 };
 
+// ─── Page: Insert After ─────────────────────────────────────────
+document.getElementById('btnInsertAfter')!.onclick = () => {
+  saveCurrentPage();
+  const newId = nextPageId();
+  const newPage = { grid: createVisualGrid(), id: newId, subgrids: [createVisualGrid()], activeSubpage: 0 };
+  pages.splice(activePageIdx + 1, 0, newPage);
+  activePageIdx++;
+  grid = newPage.grid;
+  updatePageList();
+  showFeedback(`Inserted P${newId.toString(16).toUpperCase()} after`);
+};
+
+// ─── Page: Duplicate ────────────────────────────────────────────
+document.getElementById('btnDupPage')!.onclick = () => {
+  saveCurrentPage();
+  const newId = nextPageId();
+  const dupGrid = JSON.parse(JSON.stringify(grid)) as VisualRow[];
+  const dupSubgrids = pages[activePageIdx].subgrids.map((sg: VisualRow[]) => JSON.parse(JSON.stringify(sg)));
+  const newPage = { grid: dupGrid, id: newId, subgrids: dupSubgrids, activeSubpage: 0 };
+  pages.splice(activePageIdx + 1, 0, newPage);
+  activePageIdx++;
+  grid = dupGrid;
+  updatePageList();
+  showFeedback(`Duplicated as P${newId.toString(16).toUpperCase()}`);
+};
+
+// ─── Page: Delete ───────────────────────────────────────────────
 document.getElementById('btnDelPage')!.onclick = () => {
   if (pages.length <= 1) { showFeedback('Cannot delete last page'); return; }
   pushUndo();
   pages.splice(activePageIdx, 1);
   activePageIdx = Math.min(activePageIdx, pages.length - 1);
-  grid = pages[activePageIdx].grid;
+  grid = pages[activePageIdx].subgrids[pages[activePageIdx].activeSubpage];
   updatePageList();
+  updateSubLabel();
   showFeedback('Page deleted');
 };
 
-// Subpages (simple prev/next stub for now)
-document.getElementById('btnPrevSub')?.addEventListener('click', () => showFeedback('Subpage: 1/1'));
-document.getElementById('btnNextSub')?.addEventListener('click', () => showFeedback('Subpage: 1/1'));
-document.getElementById('btnAddSub')?.addEventListener('click', () => showFeedback('Subpages not yet supported'));
+// ─── Subpage management ─────────────────────────────────────────
+
+function updateSubLabel() {
+  const p = pages[activePageIdx];
+  (document.getElementById('subLabel') as HTMLElement).textContent = `${p.activeSubpage + 1}/${p.subgrids.length}`;
+}
+
+document.getElementById('btnPrevSub')!.onclick = () => {
+  const p = pages[activePageIdx];
+  if (p.activeSubpage <= 0) return;
+  saveCurrentPage();
+  p.activeSubpage--;
+  grid = p.subgrids[p.activeSubpage];
+  p.grid = grid;
+  updateSubLabel();
+  showFeedback(`Subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
+};
+
+document.getElementById('btnNextSub')!.onclick = () => {
+  const p = pages[activePageIdx];
+  if (p.activeSubpage >= p.subgrids.length - 1) return;
+  saveCurrentPage();
+  p.activeSubpage++;
+  grid = p.subgrids[p.activeSubpage];
+  p.grid = grid;
+  updateSubLabel();
+  showFeedback(`Subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
+};
+
+document.getElementById('btnAddSub')!.onclick = () => {
+  const p = pages[activePageIdx];
+  saveCurrentPage();
+  const newSub = createVisualGrid();
+  p.subgrids.splice(p.activeSubpage + 1, 0, newSub);
+  p.activeSubpage++;
+  grid = newSub;
+  p.grid = grid;
+  updateSubLabel();
+  showFeedback(`Added subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
+};
+
+document.getElementById('btnDupSub')!.onclick = () => {
+  const p = pages[activePageIdx];
+  saveCurrentPage();
+  const dupSub = JSON.parse(JSON.stringify(grid)) as VisualRow[];
+  p.subgrids.splice(p.activeSubpage + 1, 0, dupSub);
+  p.activeSubpage++;
+  grid = dupSub;
+  p.grid = grid;
+  updateSubLabel();
+  showFeedback(`Duplicated subpage ${p.activeSubpage + 1}/${p.subgrids.length}`);
+};
+
+document.getElementById('btnDelSub')!.onclick = () => {
+  const p = pages[activePageIdx];
+  if (p.subgrids.length <= 1) { showFeedback('Cannot delete last subpage'); return; }
+  pushUndo();
+  p.subgrids.splice(p.activeSubpage, 1);
+  p.activeSubpage = Math.min(p.activeSubpage, p.subgrids.length - 1);
+  grid = p.subgrids[p.activeSubpage];
+  p.grid = grid;
+  updateSubLabel();
+  showFeedback('Subpage deleted');
+};
 
 // ─── Help ───────────────────────────────────────────────────────
 
@@ -546,6 +648,7 @@ document.getElementById('btnHelp')!.onclick = () => {
 };
 
 updatePageList();
+updateSubLabel();
 
 // ─── Export ─────────────────────────────────────────────────────
 
