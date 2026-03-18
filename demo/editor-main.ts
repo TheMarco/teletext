@@ -182,31 +182,10 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'fill':
-      // Flood fill: match on visual appearance (char + fg + bg + mosaic)
-      const targetChar = cell.char;
-      const targetFg = cell.fg;
-      const targetBg = cell.bg;
-      const targetMosaic = cell.mosaic;
-      if (targetFg === activeFg && targetBg === activeBg) break;
-      const visited = new Set<string>();
-      const stack: [number, number][] = [[row, col]];
-      while (stack.length > 0) {
-        const [r, c] = stack.pop()!;
-        const key = `${r},${c}`;
-        if (visited.has(key)) continue;
-        if (r < 0 || r >= 24 || c < 0 || c >= 40) continue;
-        const t = grid[r][c];
-        // For mosaic cells: match on color only (different sextant patterns are still "same region")
-        // For text cells: match on char + color
-        if (targetMosaic && t.mosaic) {
-          if (t.fg !== targetFg || t.bg !== targetBg) continue;
-        } else {
-          if (t.char !== targetChar || t.fg !== targetFg || t.bg !== targetBg || t.mosaic !== targetMosaic) continue;
-        }
-        visited.add(key);
-        t.fg = activeFg;
-        t.bg = activeBg;
-        stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
+      // Recolor brush: click/drag to change cell colors
+      // Preserves the cell's character and mosaic pattern, just changes fg/bg
+      cell.fg = activeFg;
+      cell.bg = activeBg;
       }
       break;
 
