@@ -163,16 +163,8 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
         cell.fg = bits > 0 ? cell.fg : activeFg;
         cell.bg = activeBg;
       } else {
-        // If painting a different color than the cell's current fg,
-        // start fresh — a cell can only have one fg color
-        let bits: number;
-        if (cell.mosaic && cell.fg === activeFg) {
-          // Same color: add to existing bits
-          bits = mosaicBits(cell);
-        } else {
-          // Different color: clear old bits, start new
-          bits = 0;
-        }
+        // Keep existing bits, add the new sub-block, change color
+        let bits = cell.mosaic ? mosaicBits(cell) : 0;
         bits |= (1 << (sy * 2 + sx));
         cell.char = bitsToMosaic(bits);
         cell.mosaic = true;
@@ -182,14 +174,13 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'fill':
-      // Recolor brush: click/drag to change cell colors
-      // Preserves the cell's character and mosaic pattern, just changes fg/bg
-      cell.fg = activeFg;
-      cell.bg = activeBg;
+      // Recolor brush: change cell colors, preserve content
+      grid[row][col] = { ...cell, fg: activeFg, bg: activeBg };
       break;
 
     case 'erase':
-      grid[row][col] = defaultVisualCell();
+      // Erase to black space — use default state colors so no control codes are needed
+      grid[row][col] = { char: 0x20, fg: 7, bg: 0, mosaic: false, contiguous: true };
       break;
 
     case 'picker':
