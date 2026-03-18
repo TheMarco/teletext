@@ -182,10 +182,12 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       break;
 
     case 'fill':
-      // Flood fill: change all connected cells of the same color
+      // Flood fill: match on visual appearance (char + fg + bg + mosaic)
+      const targetChar = cell.char;
       const targetFg = cell.fg;
       const targetBg = cell.bg;
-      if (targetFg === activeFg && targetBg === activeBg) break; // already the right color
+      const targetMosaic = cell.mosaic;
+      if (targetFg === activeFg && targetBg === activeBg) break;
       const visited = new Set<string>();
       const stack: [number, number][] = [[row, col]];
       while (stack.length > 0) {
@@ -194,7 +196,8 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
         if (visited.has(key)) continue;
         if (r < 0 || r >= 24 || c < 0 || c >= 40) continue;
         const t = grid[r][c];
-        if (t.fg !== targetFg || t.bg !== targetBg) continue;
+        // Match cells that look the same: same char, fg, bg, and mosaic flag
+        if (t.char !== targetChar || t.fg !== targetFg || t.bg !== targetBg || t.mosaic !== targetMosaic) continue;
         visited.add(key);
         t.fg = activeFg;
         t.bg = activeBg;
