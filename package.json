@@ -9,7 +9,8 @@
     "test:watch": "vitest",
     "start": "vite demo --open",
     "editor": "vite demo --open /editor.html",
-    "golden:generate": "tsx src/__tests__/golden/generate.ts"
+    "golden:generate": "tsx src/__tests__/golden/generate.ts",
+    "build:t42": "tsx scripts/build-t42.ts"
   },
   "keywords": [],
   "author": "Marco van Hylckama Vlieg",
