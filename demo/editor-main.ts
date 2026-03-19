@@ -746,14 +746,46 @@ document.getElementById('btnExport')!.onclick = () => {
   saveCurrentPage();
   for (const p of pages) {
     const page = createEmptyPage(p.id);
+    // Set fastext links if any page targets are defined
+    const ft = p.fastext;
+    if (ft && ft.some((f: any) => f.page)) {
+      page.fastext = {
+        red: ft[0]?.page ? parseInt(ft[0].page, 16) || null : null,
+        green: ft[1]?.page ? parseInt(ft[1].page, 16) || null : null,
+        yellow: ft[2]?.page ? parseInt(ft[2].page, 16) || null : null,
+        cyan: ft[3]?.page ? parseInt(ft[3].page, 16) || null : null,
+      };
+    }
     page.subpages = [];
     for (let s = 0; s < p.subgrids.length; s++) {
       const sub = { ...page.subpages[0] ?? { subcode: s, rows: [], languageSubset: 'english' as const, pageFlags: { erasePage: true, newsflash: false, subtitle: false, suppressHeader: false, updateIndicator: false, interruptedSequence: false, inhibitDisplay: false } } };
       sub.subcode = s;
       sub.rows = [];
       for (let r = 0; r < 24; r++) {
-        const result = compileVisualRow(p.subgrids[s][r]);
-        sub.rows.push({ index: r, tokens: result.tokens });
+        // Row 23: bake fastext labels into the content (colored text bar)
+        if (r === 23 && ft && ft.some((f: any) => f.label || f.page)) {
+          const ftRow: TeletextToken[] = [];
+          const colors = [0x01, 0x02, 0x03, 0x06]; // red, green, yellow, cyan (alpha codes)
+          let col = 0;
+          for (let fi = 0; fi < 4 && col < 40; fi++) {
+            const label = (ft[fi]?.label || ft[fi]?.page || '').padEnd(10).substring(0, 10);
+            // Insert alpha color code
+            ftRow.push({ kind: 'control', codepoint7: colors[fi] });
+            col++;
+            // Insert label text
+            for (let ci = 0; ci < label.length && col < 40; ci++) {
+              const ch = label.charCodeAt(ci);
+              ftRow.push({ kind: 'char', codepoint7: ch >= 0x20 && ch <= 0x7E ? ch : 0x20 });
+              col++;
+            }
+          }
+          // Pad remaining with spaces
+          while (col < 40) { ftRow.push({ kind: 'char', codepoint7: 0x20 }); col++; }
+          sub.rows.push({ index: r, tokens: ftRow });
+        } else {
+          const result = compileVisualRow(p.subgrids[s][r]);
+          sub.rows.push({ index: r, tokens: result.tokens });
+        }
       }
       page.subpages.push(sub);
     }
@@ -794,7 +826,33 @@ document.getElementById('btnImportT42')!.onclick = () => (document.getElementByI
         subgrids.push(vRows);
         subMetas.push(meta);
       }
-      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0, fastext: [{label:'',page:''},{label:'',page:''},{label:'',page:''},{label:'',page:''}] };
+      // Reconstruct fastext from imported page data
+      const ftImport: {label:string,page:string}[] = [{label:'',page:''},{label:'',page:''},{label:'',page:''},{label:'',page:''}];
+      if (p.fastext) {
+        const ftLinks = [p.fastext.red, p.fastext.green, p.fastext.yellow, p.fastext.cyan];
+        for (let fi = 0; fi < 4; fi++) {
+          if (ftLinks[fi]) ftImport[fi].page = ftLinks[fi]!.toString(16);
+        }
+        // Try to extract labels from row 23 (fastext bar content)
+        const row23 = compileRow(p.subpages[0]?.rows[23] ?? { index: 23, tokens: [] });
+        const bytes23 = row23.bytes40;
+        const colorCodes = [0x01, 0x02, 0x03, 0x06]; // red, green, yellow, cyan
+        let bi = 0;
+        for (let fi = 0; fi < 4 && bi < 40; fi++) {
+          // Find the next color code matching this fastext color
+          while (bi < 40 && bytes23[bi] !== colorCodes[fi]) bi++;
+          if (bi >= 40) break;
+          bi++; // skip the color code
+          // Read text until next control code or end
+          let label = '';
+          while (bi < 40 && bytes23[bi] >= 0x20) {
+            label += String.fromCharCode(bytes23[bi]);
+            bi++;
+          }
+          ftImport[fi].label = label.trim();
+        }
+      }
+      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0, fastext: ftImport };
     });
     activePageIdx = 0;
     grid = pages[0].subgrids[0];

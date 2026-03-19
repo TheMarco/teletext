@@ -285,6 +285,7 @@ interface PageAccumulator {
   pageNumber: number;
   subcode: number;
   rows: Map<number, Uint8Array>;
+  fastext?: Uint8Array; // packet 27 raw data
 }
 
 /**
@@ -361,8 +362,17 @@ function assemblePages(lines: TeletextLine[]): PageAccumulator[] {
           acc.rows.set(line.packetNumber, line.data.slice());
         }
       }
+    } else if (line.packetNumber === 27) {
+      // Fastext links packet — store for the active page
+      const key = active.get(line.magazine);
+      if (key) {
+        const acc = buffers.get(key);
+        if (acc) {
+          acc.fastext = line.data.slice();
+        }
+      }
     }
-    // Packets 24-31: enhancement data — skip for now
+    // Packets 24-26, 28-31: other enhancement data — skip for now
   }
 
   // Return all accumulated page buffers
@@ -513,6 +523,23 @@ export function importT42(buffer: Uint8Array): T42ImportResult {
       page = createEmptyPage(acc.pageNumber);
       page.subpages = [];
       pageMap.set(acc.pageNumber, page);
+    }
+
+    // Decode fastext links from packet 27 if present
+    if (acc.fastext && !page.fastext) {
+      const ft = acc.fastext;
+      const red = (ft[0] & 0xFF) | ((ft[1] & 0xFF) << 8);
+      const green = (ft[6] & 0xFF) | ((ft[7] & 0xFF) << 8);
+      const yellow = (ft[12] & 0xFF) | ((ft[13] & 0xFF) << 8);
+      const cyan = (ft[18] & 0xFF) | ((ft[19] & 0xFF) << 8);
+      if (red || green || yellow || cyan) {
+        page.fastext = {
+          red: red || null,
+          green: green || null,
+          yellow: yellow || null,
+          cyan: cyan || null,
+        };
+      }
     }
 
     const subpage = createEmptySubpage(acc.subcode);

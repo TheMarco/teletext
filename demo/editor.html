@@ -165,23 +165,48 @@
 
   <!-- Help overlay -->
   <div id="helpOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:center;justify-content:center">
-    <div style="background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:24px;max-width:520px;max-height:80vh;overflow-y:auto;color:#bbb;font-size:13px;line-height:1.7">
+    <div style="background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:24px;max-width:560px;max-height:80vh;overflow-y:auto;color:#bbb;font-size:13px;line-height:1.7">
       <h2 style="color:#0ff;font-size:18px;margin-bottom:12px">Teletext Studio</h2>
-      <p><strong style="color:#fff">Text</strong> — Click to place cursor, then type. Arrow keys navigate. Enter for new line.</p>
-      <p><strong style="color:#fff">Paint Blocks</strong> — Click/drag to paint sub-blocks (6 per cell, 2×3 grid). Right-click erases. Hold <strong>Shift</strong> to constrain to straight lines.</p>
-      <p><strong style="color:#fff">Recolor</strong> — Flood fill: click a region to change its color. Keeps content, changes fg/bg.</p>
-      <p><strong style="color:#fff">Eraser</strong> — Click/drag to clear cells.</p>
-      <p><strong style="color:#fff">Pick Color</strong> — Click any cell to grab its colors.</p>
-      <p><strong style="color:#fff">Select/Move</strong> — Drag to select. Click inside to move. Delete to clear.</p>
-      <p><strong style="color:#fff">Double Height</strong> — Toggle: makes current row text twice as tall.</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Tools</h3>
+      <p><strong style="color:#fff">Text</strong> — Click to place cursor, then type. Arrow keys navigate. Enter moves to next line. Backspace deletes left, Delete clears at cursor. Tab advances 4 columns.</p>
+      <p><strong style="color:#fff">Paint Blocks</strong> — Click/drag to paint individual sub-blocks (6 per cell, 2&times;3 grid). Right-click erases sub-blocks. Hold <strong>Shift</strong> while dragging to constrain to straight horizontal lines. Press <strong>Space</strong> to place a full block at the cursor.</p>
+      <p><strong style="color:#fff">Recolor</strong> — Flood fill: click a region to recolor all connected cells that share the same fg, bg, and type (text/mosaic). Keeps content, changes fg/bg to your active colors.</p>
+      <p><strong style="color:#fff">Eraser</strong> — Click/drag to clear cells to default (black background, white foreground, space).</p>
+      <p><strong style="color:#fff">Pick Color</strong> — Click any cell to grab its foreground and background colors.</p>
+      <p><strong style="color:#fff">Select/Move</strong> — Drag to select a rectangular region. Click inside the selection and drag to move it. Press <strong>Delete</strong> or <strong>Backspace</strong> to clear the selection.</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Row Options</h3>
+      <p><strong style="color:#fff">Double Height</strong> — Toggle: makes the current row twice as tall. The row below automatically becomes the bottom half.</p>
+
       <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Colors</h3>
-      <p>Click the foreground/background palette swatches. In non-text tools, keys <strong>1-8</strong> select foreground, <strong>Shift+1-8</strong> select background.</p>
-      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Shortcuts</h3>
-      <p><strong>Ctrl+Z</strong> Undo &nbsp; <strong>Ctrl+Shift+Z</strong> Redo &nbsp; <strong>Escape</strong> Deselect &nbsp; <strong>Delete</strong> Clear selection</p>
+      <p>Click the foreground/background palette swatches in the left panel. In non-text tools, keys <strong>1&ndash;8</strong> select foreground color, <strong>Shift+1&ndash;8</strong> select background color.</p>
+      <p style="color:#999;font-size:12px">Colors: 1=Black, 2=Red, 3=Green, 4=Yellow, 5=Blue, 6=Magenta, 7=Cyan, 8=White</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Keyboard Shortcuts</h3>
+      <p><strong>Ctrl+Z</strong> / <strong>Cmd+Z</strong> &mdash; Undo</p>
+      <p><strong>Ctrl+Shift+Z</strong> / <strong>Cmd+Shift+Z</strong> &mdash; Redo</p>
+      <p><strong>Arrow keys</strong> &mdash; Move cursor (all tools)</p>
+      <p><strong>Escape</strong> &mdash; Deselect</p>
+      <p><strong>Delete / Backspace</strong> &mdash; Clear selection (Select tool)</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">CRT Overlay</h3>
+      <p>Toggle the <strong>CRT</strong> button to enable a 5-pass WebGL shader that simulates scanlines, phosphor persistence, bloom, and aperture grille.</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Pages &amp; Subpages</h3>
+      <p>Use the right panel to manage pages (insert, duplicate, delete) and subpages. Each page has a hex page number (100&ndash;8FF). Subpages cycle automatically in the viewer.</p>
+
       <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Fastext Links</h3>
-      <p>Set label + page number in the right panel. Shows colored navigation bar on row 23.</p>
-      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Import/Export</h3>
-      <p><strong>Import .t42</strong> — Load teletext files (all pages). <strong>Export .t42</strong> — Save all pages. <strong>Import Image</strong> — Convert bitmap to mosaic art.</p>
+      <p>Set label text and target page number for each color (Red, Green, Yellow, Cyan) in the right panel. When set, a colored navigation bar renders on row 24 in the viewer.</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Import / Export</h3>
+      <p><strong>Export .t42</strong> &mdash; Save all pages as a binary T42 file (broadcast-compatible format).</p>
+      <p><strong>Import .t42</strong> &mdash; Load all pages from a T42 file. Supports raw 42/46-byte blocks, PES-framed DVB data units, and auto-detects bit-reversed captures.</p>
+      <p><strong>Import Image</strong> &mdash; Convert a bitmap image to full-color mosaic art. Configure start position, size, and background color in the import dialog.</p>
+
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">How Colors Work</h3>
+      <p style="color:#999;font-size:12px">Teletext uses control codes to set colors. Each color change requires one cell position for the control code. The compiler automatically inserts these codes, sacrificing one cell of content at each color transition. For best results, leave a blank column before color changes.</p>
+
       <div style="text-align:center;margin-top:16px"><button onclick="document.getElementById('helpOverlay').style.display='none'" style="padding:8px 24px;font-size:14px;background:#0aa;color:#fff;border:none;border-radius:4px;cursor:pointer">Got it</button></div>
     </div>
   </div>

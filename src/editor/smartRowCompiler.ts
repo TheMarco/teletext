@@ -72,8 +72,10 @@ function transitionCodes(state: RowState, cell: VisualCell): number[] {
  * Check if a cell needs any state transition from the current state.
  */
 function needsTransition(state: RowState, cell: VisualCell): boolean {
-  const isBlankSpace = cell.char === 0x20 && !cell.mosaic;
-  if (isBlankSpace) {
+  // A cell with char 0x20 has no visible foreground content — whether it's
+  // a text space or an empty mosaic (all sextants off). Only background
+  // color matters visually, so skip fg/mode transitions for these cells.
+  if (cell.char === 0x20) {
     return state.bg !== cell.bg;
   }
   return state.fg !== cell.fg ||
@@ -131,8 +133,8 @@ export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = fals
           const slot = slotContent[j];
           if (slot.type === 'cell') {
             const c = visual[slot.idx];
-            // Only use genuinely empty cells (space, not mosaic, same bg as default or same bg)
-            if (c.char === 0x20 && !c.mosaic) {
+            // Use any visually empty cell (char 0x20 = text space or empty mosaic)
+            if (c.char === 0x20) {
               availableSlots.unshift(j); // prepend to keep order
             } else {
               break; // stop at first non-space — don't jump over content
@@ -149,14 +151,34 @@ export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = fals
           }
           Object.assign(state2, s);
         } else {
-          // Not enough empty space — sacrifice cells at position i onward
-          // for the control codes. In teletext, every color/mode change
-          // requires a display position for the control code byte.
-          const sacrificeCount = Math.min(codes.length, 40 - i);
-          for (let j = 0; j < sacrificeCount; j++) {
-            slotContent[i + j] = { type: 'control', code: codes[j] };
+          // Not enough empty space. Sacrifice content cells just BEFORE the
+          // transition (backward from i-1). This loses the last cell(s) of the
+          // old-color section but preserves the new content. Control codes are
+          // set-after, so placing at i-1 makes the new color take effect at i.
+          const candidates: number[] = [];
+          for (let j = i - 1; j >= 0 && candidates.length < codes.length; j--) {
+            if (slotContent[j].type === 'cell') {
+              candidates.unshift(j);
+            } else {
+              break; // stop at existing control code
+            }
           }
-          Object.assign(state2, s);
+
+          if (candidates.length >= codes.length) {
+            // Use the slots closest to position i
+            const useSlots = candidates.slice(-codes.length);
+            for (let j = 0; j < codes.length; j++) {
+              slotContent[useSlots[j]] = { type: 'control', code: codes[j] };
+            }
+            Object.assign(state2, s);
+          } else if (i + codes.length <= 40) {
+            // Near start of row — not enough cells before i.
+            // Fall back to sacrificing at position i (loses first cell of new content).
+            for (let j = 0; j < codes.length && i + j < 40; j++) {
+              slotContent[i + j] = { type: 'control', code: codes[j] };
+            }
+            Object.assign(state2, s);
+          }
         }
       }
     }

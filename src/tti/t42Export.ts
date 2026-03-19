@@ -54,6 +54,11 @@ function exportPagePackets(page: TeletextPage, subpageIdx: number = 0): Uint8Arr
     packets.push(encodePacket(dp.magazine, dp.packetNumber, dp.payload, false));
   }
 
+  // Extension packets (fastext links = packet 27, etc.)
+  for (const ep of payload.extensionPackets) {
+    packets.push(encodePacket(ep.magazine, ep.packetNumber, ep.payload, false));
+  }
+
   return packets;
 }
 

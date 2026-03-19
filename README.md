@@ -10,7 +10,7 @@ This is a fully functional Teletext system that can:
 
 - **Render** pixel-perfect Teletext pages through a state machine that implements every Level 1 control code
 - **Import** real broadcast captures from `.t42` (DVB) files
-- **Author** new pages with a browser-based editor
+- **Author** new pages with a browser-based visual editor
 - **Compile** pages into exact Teletext packet structures
 - **Display** pages through a CRT shader that simulates scanlines, phosphor persistence, bloom, and aperture grille
 - **View** a complete Teletext service with keypad navigation, fastext links, and subpage carousels
@@ -32,7 +32,7 @@ npm test
 
 ## The Viewer
 
-A standalone Teletext viewer with a CRT shader overlay. Type page numbers on the keypad or keyboard. Navigate with fastext color buttons. Arrow keys flip through subpages.
+A standalone Teletext viewer with a CRT shader overlay. Type page numbers on the keypad or keyboard (hex, 100-8FF). Navigate with fastext color buttons. Arrow keys and PgUp/PgDn flip through subpages. Press R to reveal concealed text. Load any `.t42` file with the Load button.
 
 The viewer ships with a 36-page Teletext service built from [ai-created.com](https://ai-created.com) content — products, stories, lab notes, media, and about pages, all formatted as authentic Teletext.
 
@@ -49,16 +49,29 @@ The viewer ships with a 36-page Teletext service built from [ai-created.com](htt
 
 ## The Editor
 
-A browser-based Teletext page editor with four modes:
+A browser-based WYSIWYG Teletext page editor. Press `?` for the full help overlay.
 
-- **Text** — type characters, arrow keys to navigate
-- **Control** — insert color codes, flash, double-height, hold graphics
-- **Mosaic** — click and drag to paint 2×3 sextant blocks, right-click to erase
-- **Inspect** — examine raw byte values of any cell
+**Tools:**
 
-Features: undo/redo, copy/paste rows, subpage management, page settings, fastext link editing, keyboard shortcuts for all control codes, control code overlay, bitmap import, TTI/T42 import/export.
+- **Text** — click to place cursor, type characters. Arrow keys navigate, Enter for new line, Tab advances 4 columns
+- **Paint Blocks** — click/drag to paint individual 2×3 sextant sub-blocks. Right-click erases. Shift+drag constrains to straight horizontal lines. Space places a full block at cursor
+- **Recolor** — flood fill that recolors all connected cells sharing the same fg, bg, and type (text/mosaic)
+- **Eraser** — click/drag to clear cells to default state
+- **Pick Color** — click any cell to grab its foreground and background colors
+- **Select/Move** — drag to select a region, click inside to move it, Delete to clear
 
-Press `?` for the help overlay.
+**Features:**
+
+- Undo/redo (Ctrl+Z / Ctrl+Shift+Z)
+- Double-height rows
+- Foreground and background color selection (8 teletext colors, keys 1-8 / Shift+1-8 in non-text tools)
+- Multi-page editing with insert, duplicate, and delete
+- Subpage management (add, duplicate, delete, navigate)
+- Fastext link editing with separate label and page target fields (renders colored bar on row 24)
+- CRT shader overlay toggle
+- Full-color bitmap import with configurable position, size, and background color
+- T42 import (loads all pages from broadcast captures) and export (saves all pages)
+- Smart row compiler that automatically manages teletext control codes, sacrificing cell positions for color/mode transitions as required by the format
 
 ## The Renderer
 
@@ -73,9 +86,11 @@ Raw bytes → State Machine → Cell Grid → Glyph Cache → Render Buffer → 
 - **Render buffer** — resolves cells to glyph IDs, renders to 480×240 RGBA pixel buffer with flash phase and reveal support
 - **CRT shader** — 5-pass WebGL pipeline: bloom extraction → Gaussian blur (H+V) → CRT composite → blit. Simulates scanlines, aperture grille, phosphor persistence, halation, RGB convergence, interlace flicker, analog noise
 
-## T42 Import
+## T42 Import/Export
 
-Imports real Teletext broadcast captures from `.t42` files (DVB teletext data units). Handles:
+Imports and exports real Teletext broadcast data in `.t42` format (DVB teletext data units).
+
+**Import handles:**
 
 - Raw 42-byte and 46-byte block formats
 - PES-framed DVB data units
@@ -84,6 +99,14 @@ Imports real Teletext broadcast captures from `.t42` files (DVB teletext data un
 - Persistent page buffers (rows accumulate over multiple transmissions, like a real decoder)
 - Null line filtering
 - Page number extraction from Hamming-encoded header bytes
+
+**Export produces:**
+
+- Standard 42-byte wire-format packets
+- Hamming 8/4 encoded address and header bytes
+- Odd parity on all data bytes
+- Correct page flags, subcode, and language subset encoding
+- Fastext link packets (packet 27)
 
 ## TTI Import/Export
 
@@ -105,6 +128,15 @@ Compiles the canonical page model into exact Teletext packet structures:
 - Page flag and language subset encoding
 - Fastext link packets
 - Structured diagnostics (warnings/errors with row/col positions)
+
+## Smart Row Compiler
+
+The editor uses a smart row compiler that bridges the gap between the visual editing model (each cell has its own color) and the teletext byte format (colors are set by control codes that consume display positions):
+
+- Automatically inserts color/mode control codes before transitions
+- Prefers placing control codes in existing empty space cells
+- When no space is available, sacrifices cells at the transition point — this is standard teletext behavior where every color/mode change requires one display position
+- Handles background color changes, foreground color changes, text/mosaic mode switches, and contiguous/separated mosaic transitions
 
 ## Bitmap Import
 
@@ -128,19 +160,21 @@ src/
 ├── timing-engine/    # Flash phase timing
 ├── crt/              # WebGL CRT shader overlay
 ├── model/            # Canonical page types, validators, factories
-├── tti/              # TTI lexer/parser/mapper/exporter, T42 import
-├── compile/          # AST → packet compiler
+├── tti/              # TTI lexer/parser/mapper/exporter, T42 import/export
+├── compile/          # AST → packet compiler, Hamming 8/4 encode
 ├── bundle/           # Service serialization
-├── editor/           # Editor state, commands, preview adapter
+├── editor/           # Visual editor types, smart row compiler
 └── import/           # Bitmap → mosaic pipeline
 
 demo/
+├── index.html        # Viewer + info panel
 ├── viewer.html       # Standalone teletext viewer
+├── viewer-main.ts    # Viewer logic (T42 load, keypad, subpage carousel)
 ├── editor.html       # Page editor
-├── index.html        # Basic renderer demo
+├── editor-main.ts    # Editor logic (tools, painting, import/export)
 └── ai-created-pages.ts  # 36-page teletext service
 
-tests/                # 389 tests across 26 files
+tests/                # 400 tests across 27 files
 ```
 
 ## Key Design Decisions
@@ -149,15 +183,17 @@ tests/                # 389 tests across 26 files
 - **Exactness over convenience** — control codes preserve byte-level meaning. The renderer shows what's in the data, errors and all.
 - **The compiler doesn't "fix" illegal authoring** — it may warn, it may fail, but it won't silently rewrite semantics.
 - **Editor metadata never affects compiled output** — guides, locked regions, and trace images are stripped before compilation.
+- **Color transitions consume display positions** — the smart row compiler automatically places control codes, sacrificing cells when no empty space is available, matching real teletext hardware behavior.
 
 ## Tests
 
-389 tests covering:
+400 tests across 27 files covering:
 
 - State machine control codes, edge cases, and interactions
 - TTI round-trip fidelity
 - T42 import with Hamming decode verification
 - Packet compiler determinism
+- Smart row compiler color transitions
 - Editor command reversibility (50 edits + 50 undos = original state)
 - Bitmap import pipeline bijectivity
 - Golden pixel-perfect rendering validation
