@@ -176,8 +176,7 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
     case 'fill': {
       // Flood fill recolor: change fg/bg of all connected same-colored cells
       // Matches on fg + bg + whether cell has visible content (non-space)
-      const tFg = cell.fg, tBg = cell.bg;
-      const tHasContent = cell.char !== 0x20 || cell.mosaic;
+      const tFg = cell.fg, tBg = cell.bg, tMosaic = cell.mosaic;
       if (tFg === activeFg && tBg === activeBg) break;
       const vis = new Set<string>();
       const stk: [number, number][] = [[row, col]];
@@ -186,8 +185,8 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
         const k = `${r},${c}`;
         if (vis.has(k) || r < 0 || r >= 24 || c < 0 || c >= 40) continue;
         const t = grid[r][c];
-        const hasContent = t.char !== 0x20 || t.mosaic;
-        if (t.fg !== tFg || t.bg !== tBg || hasContent !== tHasContent) continue;
+        // Must match: same fg, same bg, same type (mosaic vs text)
+        if (t.fg !== tFg || t.bg !== tBg || t.mosaic !== tMosaic) continue;
         vis.add(k);
         grid[r][c] = { ...t, fg: activeFg, bg: activeBg };
         stk.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
@@ -956,6 +955,30 @@ function compileAndRender() {
             data[oi] = color[0]; data[oi+1] = color[1]; data[oi+2] = color[2]; data[oi+3] = 255;
           }
         }
+      }
+    }
+  }
+
+  // Render fastext bar on row 23 if any links are set
+  const ft = pages[activePageIdx]?.fastext ?? ['','','',''];
+  if (ft.some((f: string) => f)) {
+    const ftColors = [[255,0,0],[0,255,0],[255,255,0],[0,255,255]]; // R,G,Y,C
+    let fcol = 0;
+    for (let i = 0; i < 4 && fcol < 40; i++) {
+      const label = ft[i].padEnd(10).substring(0, 10);
+      const rgb = ftColors[i];
+      for (let j = 0; j < label.length && fcol < 40; j++) {
+        const ch = label.charCodeAt(j);
+        const glyph = getG0Glyph(ch >= 0x20 && ch <= 0x7E ? ch : 0x20);
+        for (let y = 0; y < 10; y++) {
+          for (let x = 0; x < 12; x++) {
+            const pixel = glyph[y * 12 + x];
+            const color = pixel ? rgb : [0,0,0];
+            const oi = ((23 * 10 + y) * imgW + fcol * 12 + x) * 4;
+            data[oi] = color[0]; data[oi+1] = color[1]; data[oi+2] = color[2]; data[oi+3] = 255;
+          }
+        }
+        fcol++;
       }
     }
   }
