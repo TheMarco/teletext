@@ -36,16 +36,37 @@ export function teletextByteToTti(byte: number): number {
 
 /**
  * Decode an OL line string into Teletext bytes.
- * The string may contain characters with codes 0x80-0x9F
- * representing translated control codes.
+ *
+ * Handles two encoding styles:
+ * 1. Direct high-byte encoding: characters 0x80-0x9F represent control codes
+ * 2. Escaped hex notation: literal \xNN sequences (common in text-mode TTI files)
+ *
+ * Both are translated to Teletext bytes (0x00-0x1F for control codes).
  */
 export function decodeOLContent(content: string): number[] {
   const bytes: number[] = [];
   for (let i = 0; i < content.length; i++) {
+    // Check for \xNN hex escape sequence
+    if (
+      content[i] === '\\' &&
+      i + 3 < content.length &&
+      content[i + 1] === 'x' &&
+      isHexDigit(content[i + 2]) &&
+      isHexDigit(content[i + 3])
+    ) {
+      const code = parseInt(content.substring(i + 2, i + 4), 16);
+      bytes.push(ttiByteToTeletext(code));
+      i += 3; // skip past \xNN (loop increments once more)
+      continue;
+    }
     const code = content.charCodeAt(i);
     bytes.push(ttiByteToTeletext(code));
   }
   return bytes;
+}
+
+function isHexDigit(ch: string): boolean {
+  return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
 }
 
 /**

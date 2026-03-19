@@ -4,3 +4,4 @@ export * from './state-machine/index.js';
 export * from './glyph-system/index.js';
 export * from './render-buffer/index.js';
 export * from './timing-engine/index.js';
+export * from './render-ansi/index.js';

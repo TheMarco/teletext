@@ -47,6 +47,36 @@ The viewer ships with a 36-page Teletext service built from [ai-created.com](htt
 | P500 | Media |
 | P600 | About |
 
+## Terminal Viewer
+
+An interactive terminal-based viewer that renders Teletext pages using ANSI escape sequences and Unicode sextant characters.
+
+```bash
+./teletext.sh <file.t42|file.tti> [page-hex]
+```
+
+**Controls:**
+
+| Key | Action |
+|---|---|
+| 0-9, A-F | Type page number (hex) |
+| Enter | Navigate to typed page |
+| Backspace | Delete last digit |
+| Escape | Clear input |
+| Left/Right | Previous/next subpage |
+| R | Toggle reveal |
+| F1-F4 | Fastext: red, green, yellow, cyan |
+| Q / Ctrl-C | Quit |
+
+**Terminal requirements:**
+
+- **Unicode 13.0+ font** — mosaic graphics use the "Symbols for Legacy Computing" block (U+1FB00–U+1FB3B). Most default terminal fonts don't include these. [Iosevka](https://typeof.net/Iosevka/) is a good monospace font with full coverage. Verify your font has the glyphs with: `fc-list :charset=1FB00 family`
+- **UTF-8 locale** — your terminal must be in UTF-8 mode
+- **Truecolor support** — the viewer uses 24-bit color SGR sequences
+- **Recommended terminal: [WezTerm](https://wezfurlong.org/wezterm/)** — handles Unicode sextants and truecolor well. Kitty, iTerm2, and Ghostty also work. Classic xterm may struggle with supplementary Unicode planes even with the right font installed.
+
+**Known limitation:** double-height text renders at normal height. Teletext double-height scales characters vertically without changing width, but the only terminal mechanism for this (VT100 DECDHL) always doubles both height and width. No terminal escape sequence exists for height-only scaling.
+
 ## The Editor
 
 A browser-based WYSIWYG Teletext page editor. Press `?` for the full help overlay.
@@ -154,6 +184,7 @@ Pipeline: image → resize/fit → quantize to 8-color palette → encode 2×3 s
 src/
 ├── state-machine/    # Control code state machine
 ├── glyph-system/     # G0/G1 fonts, glyph cache, national variants
+├── render-ansi/      # Cell grid → ANSI terminal output (Unicode sextants)
 ├── render-buffer/    # Cell grid → RGBA pixel rendering
 ├── packet-decoder/   # Hamming 8/4 decode, parity
 ├── page-assembler/   # Packet stream → page reconstruction
@@ -165,6 +196,9 @@ src/
 ├── bundle/           # Service serialization
 ├── editor/           # Visual editor types, smart row compiler
 └── import/           # Bitmap → mosaic pipeline
+
+scripts/
+└── ansi-render.ts    # Interactive terminal viewer
 
 demo/
 ├── index.html        # Viewer + info panel
