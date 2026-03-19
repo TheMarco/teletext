@@ -953,8 +953,8 @@ function compileAndRender() {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
 
-  const cellW = canvas.width / 40;
-  const cellH = canvas.height / 24;
+  const cw = canvas.width / 40;
+  const ch = canvas.height / 24;
 
   // Selection rectangle
   if (selection) {
@@ -962,23 +962,22 @@ function compileAndRender() {
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.strokeRect(
-      selection.c1 * cellW, selection.r1 * cellH,
-      (selection.c2 - selection.c1 + 1) * cellW,
-      (selection.r2 - selection.r1 + 1) * cellH,
+      selection.c1 * cw, selection.r1 * ch,
+      (selection.c2 - selection.c1 + 1) * cw,
+      (selection.r2 - selection.r1 + 1) * ch,
     );
     ctx.setLineDash([]);
-    // Dim area outside selection
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(0, 0, canvas.width, selection.r1 * cellH); // top
-    ctx.fillRect(0, (selection.r2 + 1) * cellH, canvas.width, canvas.height); // bottom
-    ctx.fillRect(0, selection.r1 * cellH, selection.c1 * cellW, (selection.r2 - selection.r1 + 1) * cellH); // left
-    ctx.fillRect((selection.c2 + 1) * cellW, selection.r1 * cellH, canvas.width, (selection.r2 - selection.r1 + 1) * cellH); // right
+    ctx.fillRect(0, 0, canvas.width, selection.r1 * ch);
+    ctx.fillRect(0, (selection.r2 + 1) * ch, canvas.width, canvas.height);
+    ctx.fillRect(0, selection.r1 * ch, selection.c1 * cw, (selection.r2 - selection.r1 + 1) * ch);
+    ctx.fillRect((selection.c2 + 1) * cw, selection.r1 * ch, canvas.width, (selection.r2 - selection.r1 + 1) * ch);
   }
 
   // Cursor
   ctx.strokeStyle = activeTool === 'paint' ? '#0f0' : activeTool === 'select' ? '#0ff' : '#ff0';
   ctx.lineWidth = 2;
-  ctx.strokeRect(cursorCol * cellW, cursorRow * cellH, cellW, cellH);
+  ctx.strokeRect(cursorCol * cw, cursorRow * ch, cw, ch);
 }
 
 let lastTime = 0;
