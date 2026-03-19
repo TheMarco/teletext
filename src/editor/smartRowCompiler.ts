@@ -112,9 +112,10 @@ export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = fals
     }
   }
 
-  // Apply transitions: place control codes ONLY in slots that contain spaces.
-  // Never overwrite user content. If no space is available, skip the transition
-  // (the color won't change but no content is destroyed).
+  // Apply transitions: place control codes in slots before each transition.
+  // Prefer existing empty space cells. When no space is available, sacrifice
+  // cells at the transition point — this is standard teletext behavior where
+  // every color/mode change costs one display position.
   const state2 = defaultState();
   for (let i = 0; i < 40; i++) {
     const cell = visual[i];
@@ -147,15 +148,16 @@ export function compileVisualRow(visual: VisualRow, doubleHeight: boolean = fals
             slotContent[availableSlots[j]] = { type: 'control', code: codes[j] };
           }
           Object.assign(state2, s);
-        } else if (i === 0 || (i === 1 && doubleHeight)) {
-          // Edge case: transition at start of row with no preceding spaces
-          // Use the cell's own slot for the first code (cell content sacrificed)
-          // This only happens for the very first non-default cell
-          slotContent[doubleHeight ? 1 : 0] = { type: 'control', code: codes[codes.length - 1] };
+        } else {
+          // Not enough empty space — sacrifice cells at position i onward
+          // for the control codes. In teletext, every color/mode change
+          // requires a display position for the control code byte.
+          const sacrificeCount = Math.min(codes.length, 40 - i);
+          for (let j = 0; j < sacrificeCount; j++) {
+            slotContent[i + j] = { type: 'control', code: codes[j] };
+          }
           Object.assign(state2, s);
         }
-        // else: not enough space — skip transition, colors won't be perfect
-        // but no user content is destroyed
       }
     }
   }
