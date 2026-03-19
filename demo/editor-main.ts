@@ -28,6 +28,9 @@ let activeTool: 'text' | 'paint' | 'fill' | 'erase' | 'picker' | 'select' = 'tex
 let selection: { r1: number; c1: number; r2: number; c2: number } | null = null;
 let selDragStart: { row: number; col: number } | null = null;
 let selMoving = false;
+
+// Straight line constraint for shift+paint
+let paintStart: { row: number; col: number } | null = null;
 let selMoveOrigin: { row: number; col: number } | null = null;
 let selClipboard: VisualCell[][] | null = null;
 let activeFg = 7; // white
@@ -481,7 +484,7 @@ document.getElementById('btnDoubleHeight')!.onclick = () => {
 
 // Multi-page support: store pages as an array of grids
 let pages: { grid: VisualRow[]; id: number; subgrids: VisualRow[][]; subMetas: RowMeta[][]; activeSubpage: number; fastext: [string,string,string,string] }[] = [
-  { grid, id: 0x100, subgrids: [grid], subMetas: [rowMeta], activeSubpage: 0, fastext: ['','','',''] },
+  { grid, id: 0x100, subgrids: [grid], subMetas: [rowMeta], activeSubpage: 0, fastext: [{label:'',page:''},{label:'',page:''},{label:'',page:''},{label:'',page:''}] },
 ];
 let activePageIdx = 0;
 
@@ -724,19 +727,22 @@ document.getElementById('btnHelp')!.onclick = () => {
 
 // ─── Fastext links ──────────────────────────────────────────────
 
-const ftInputs = ['ftRed', 'ftGreen', 'ftYellow', 'ftCyan'].map(id => document.getElementById(id) as HTMLInputElement);
+const ftLabelInputs = ['ftRedLabel', 'ftGreenLabel', 'ftYellowLabel', 'ftCyanLabel'].map(id => document.getElementById(id) as HTMLInputElement);
+const ftPageInputs = ['ftRedPage', 'ftGreenPage', 'ftYellowPage', 'ftCyanPage'].map(id => document.getElementById(id) as HTMLInputElement);
 
 function loadFastext() {
   const ft = pages[activePageIdx].fastext;
-  ftInputs.forEach((inp, i) => inp.value = ft[i]);
+  ftLabelInputs.forEach((inp, i) => inp.value = ft[i]?.label ?? '');
+  ftPageInputs.forEach((inp, i) => inp.value = ft[i]?.page ?? '');
 }
 
 function saveFastext() {
   const ft = pages[activePageIdx].fastext;
-  ftInputs.forEach((inp, i) => ft[i] = inp.value.trim());
+  ftLabelInputs.forEach((inp, i) => ft[i].label = inp.value.trim());
+  ftPageInputs.forEach((inp, i) => ft[i].page = inp.value.trim());
 }
 
-ftInputs.forEach(inp => inp.addEventListener('change', saveFastext));
+[...ftLabelInputs, ...ftPageInputs].forEach(inp => inp.addEventListener('change', saveFastext));
 
 updatePageList();
 updateSubLabel();
@@ -798,7 +804,7 @@ document.getElementById('btnImportT42')!.onclick = () => (document.getElementByI
         subgrids.push(vRows);
         subMetas.push(meta);
       }
-      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0, fastext: ['','','',''] as [string,string,string,string] };
+      return { grid: subgrids[0], id: p.pageNumber, subgrids, subMetas, activeSubpage: 0, fastext: [{label:'',page:''},{label:'',page:''},{label:'',page:''},{label:'',page:''}] };
     });
     activePageIdx = 0;
     grid = pages[0].subgrids[0];
@@ -960,12 +966,12 @@ function compileAndRender() {
   }
 
   // Render fastext bar on row 23 if any links are set
-  const ft = pages[activePageIdx]?.fastext ?? ['','','',''];
-  if (ft.some((f: string) => f)) {
+  const ftData = pages[activePageIdx]?.fastext ?? [{label:'',page:''},{label:'',page:''},{label:'',page:''},{label:'',page:''}];
+  if (ftData.some((f: any) => f.label || f.page)) {
     const ftColors = [[255,0,0],[0,255,0],[255,255,0],[0,255,255]]; // R,G,Y,C
     let fcol = 0;
     for (let i = 0; i < 4 && fcol < 40; i++) {
-      const label = ft[i].padEnd(10).substring(0, 10);
+      const label = (ftData[i]?.label || '').padEnd(10).substring(0, 10);
       const rgb = ftColors[i];
       for (let j = 0; j < label.length && fcol < 40; j++) {
         const ch = label.charCodeAt(j);
