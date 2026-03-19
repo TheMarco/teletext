@@ -173,10 +173,27 @@ function applyTool(row: number, col: number, sx: number, sy: number, isRightClic
       }
       break;
 
-    case 'fill':
-      // Recolor brush: change cell colors, preserve content
-      grid[row][col] = { ...cell, fg: activeFg, bg: activeBg };
+    case 'fill': {
+      // Flood fill recolor: change fg/bg of all connected same-colored cells
+      // Matches on fg + bg + whether cell has visible content (non-space)
+      const tFg = cell.fg, tBg = cell.bg;
+      const tHasContent = cell.char !== 0x20 || cell.mosaic;
+      if (tFg === activeFg && tBg === activeBg) break;
+      const vis = new Set<string>();
+      const stk: [number, number][] = [[row, col]];
+      while (stk.length > 0) {
+        const [r, c] = stk.pop()!;
+        const k = `${r},${c}`;
+        if (vis.has(k) || r < 0 || r >= 24 || c < 0 || c >= 40) continue;
+        const t = grid[r][c];
+        const hasContent = t.char !== 0x20 || t.mosaic;
+        if (t.fg !== tFg || t.bg !== tBg || hasContent !== tHasContent) continue;
+        vis.add(k);
+        grid[r][c] = { ...t, fg: activeFg, bg: activeBg };
+        stk.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
+      }
       break;
+    }
 
     case 'erase':
       // Erase to black space — use default state colors so no control codes are needed
