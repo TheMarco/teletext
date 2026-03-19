@@ -31,6 +31,7 @@ let selMoving = false;
 
 // Straight line constraint for shift+paint
 let paintStart: { row: number; col: number } | null = null;
+let paintStartSy: number | null = null;
 let selMoveOrigin: { row: number; col: number } | null = null;
 let selClipboard: VisualCell[][] | null = null;
 let activeFg = 7; // white
@@ -264,12 +265,23 @@ canvas.addEventListener('mousedown', (e) => {
 
   if (activeTool !== 'text') pushUndo();
   isDragging = true;
+  paintStart = { row, col };
+  paintStartSy = sy;
   applyTool(row, col, sx, sy, e.button === 2);
 });
 
 canvas.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
-  const { row, col, sx, sy } = canvasToCell(e);
+  let { row, col, sx, sy } = canvasToCell(e);
+
+  // Shift constrains paint to straight line (same row + same sub-block row)
+  if (e.shiftKey && paintStart && activeTool === 'paint') {
+    row = paintStart.row;
+    sy = canvasToCell(e).sy; // keep actual sub-block column but lock row
+    // Also lock the sub-block row to the starting one
+    const startSy = paintStartSy ?? sy;
+    sy = startSy;
+  }
 
   if (activeTool === 'select') {
     if (selMoving && selMoveOrigin && selection && selClipboard) {
@@ -325,6 +337,8 @@ window.addEventListener('mouseup', () => {
   selDragStart = null;
   selMoving = false;
   selMoveOrigin = null;
+  paintStart = null;
+  paintStartSy = null;
 });
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
@@ -697,32 +711,8 @@ document.getElementById('btnDelSub')!.onclick = () => {
 // ─── Help ───────────────────────────────────────────────────────
 
 document.getElementById('btnHelp')!.onclick = () => {
-  alert(
-    'Teletext Studio — Quick Help\n\n' +
-    'TOOLS:\n' +
-    '• Text: Click to place cursor, then type\n' +
-    '• Paint Blocks: Click sub-blocks (2×3 per cell)\n' +
-    '  Left-click = fill, Right-click = erase\n' +
-    '• Fill Color: Click cell to recolor it\n' +
-    '• Eraser: Click cell to clear it\n' +
-    '• Pick Color: Click cell to grab its colors\n' +
-    '• Select/Move: Drag to select, click inside to move\n\n' +
-    'COLORS:\n' +
-    '• Click palette swatches for FG/BG\n' +
-    '• Keys 1-8: select FG color (non-text tools)\n' +
-    '• Shift+1-8: select BG color (non-text tools)\n\n' +
-    'SHORTCUTS:\n' +
-    '• Ctrl+Z / Ctrl+Shift+Z: Undo / Redo\n' +
-    '• Arrow keys: Move cursor\n' +
-    '• Delete: Clear selection or cell\n' +
-    '• Escape: Clear selection\n' +
-    '• Tab: 4-space tab stop (text mode)\n\n' +
-    'IMPORT/EXPORT:\n' +
-    '• Import Image: Convert bitmap to mosaic art\n' +
-    '• Import TTI/T42: Load teletext files\n' +
-    '• Export: Download as .tti file\n' +
-    '• CRT: Toggle CRT shader overlay'
-  );
+  const h = document.getElementById('helpOverlay')!;
+  h.style.display = h.style.display === 'flex' ? 'none' : 'flex';
 };
 
 // ─── Fastext links ──────────────────────────────────────────────

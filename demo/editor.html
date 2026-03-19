@@ -163,6 +163,29 @@
   <input type="file" id="fileT42" accept=".t42">
   <input type="file" id="fileBitmap" accept="image/*">
 
+  <!-- Help overlay -->
+  <div id="helpOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:center;justify-content:center">
+    <div style="background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:24px;max-width:520px;max-height:80vh;overflow-y:auto;color:#bbb;font-size:13px;line-height:1.7">
+      <h2 style="color:#0ff;font-size:18px;margin-bottom:12px">Teletext Studio</h2>
+      <p><strong style="color:#fff">Text</strong> — Click to place cursor, then type. Arrow keys navigate. Enter for new line.</p>
+      <p><strong style="color:#fff">Paint Blocks</strong> — Click/drag to paint sub-blocks (6 per cell, 2×3 grid). Right-click erases. Hold <strong>Shift</strong> to constrain to straight lines.</p>
+      <p><strong style="color:#fff">Recolor</strong> — Flood fill: click a region to change its color. Keeps content, changes fg/bg.</p>
+      <p><strong style="color:#fff">Eraser</strong> — Click/drag to clear cells.</p>
+      <p><strong style="color:#fff">Pick Color</strong> — Click any cell to grab its colors.</p>
+      <p><strong style="color:#fff">Select/Move</strong> — Drag to select. Click inside to move. Delete to clear.</p>
+      <p><strong style="color:#fff">Double Height</strong> — Toggle: makes current row text twice as tall.</p>
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Colors</h3>
+      <p>Click the foreground/background palette swatches. In non-text tools, keys <strong>1-8</strong> select foreground, <strong>Shift+1-8</strong> select background.</p>
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Shortcuts</h3>
+      <p><strong>Ctrl+Z</strong> Undo &nbsp; <strong>Ctrl+Shift+Z</strong> Redo &nbsp; <strong>Escape</strong> Deselect &nbsp; <strong>Delete</strong> Clear selection</p>
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Fastext Links</h3>
+      <p>Set label + page number in the right panel. Shows colored navigation bar on row 23.</p>
+      <h3 style="color:#ff0;font-size:13px;margin:12px 0 6px">Import/Export</h3>
+      <p><strong>Import .t42</strong> — Load teletext files (all pages). <strong>Export .t42</strong> — Save all pages. <strong>Import Image</strong> — Convert bitmap to mosaic art.</p>
+      <div style="text-align:center;margin-top:16px"><button onclick="document.getElementById('helpOverlay').style.display='none'" style="padding:8px 24px;font-size:14px;background:#0aa;color:#fff;border:none;border-radius:4px;cursor:pointer">Got it</button></div>
+    </div>
+  </div>
+
   <!-- Bitmap Import Dialog -->
   <div id="bmpDialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center">
     <div style="background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:20px;width:560px;max-height:80vh;overflow-y:auto">
